@@ -75,6 +75,8 @@ genesis event recorded on-chain.
 │   └── Theory_TFAPSI_RU.pdf
 ├── Anchor.toml
 ├── Cargo.toml
+├── Client
+├── License
 └── README.md
 ```
 ---
