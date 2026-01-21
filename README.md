@@ -61,7 +61,6 @@ genesis event recorded on-chain.
 ---
 
 ## Repository Structure
-
 .
 ├── programs
 │   └── orbital_pulse
