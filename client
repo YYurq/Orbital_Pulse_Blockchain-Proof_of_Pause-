@@ -1,0 +1,13 @@
+// Пример вызова Орбитального Перехода
+const tx = await program.methods
+  .tryTransition()
+  .accounts({
+    state: statePubKey,
+    mint: mintPda,
+    tokenAccount: userTokenAccount,
+    slotHashes: "SysvarS1otHashes111111111111111111111111111", 
+    signer: provider.wallet.publicKey,
+  })
+  .rpc();
+
+console.log(`Попытка стабилизации отправлена: ${tx}`);
