@@ -1,6 +1,6 @@
 import * as anchor from "@coral-xyz/anchor";
 import { Program } from "@coral-xyz/anchor";
-import { OrbitalEngine } from "../target/types/orbital_engine";
+import { OrbitalPulse } from "../target/types/orbital_engine";
 import { 
   getAssociatedTokenAddressSync, 
   TOKEN_PROGRAM_ID, 
