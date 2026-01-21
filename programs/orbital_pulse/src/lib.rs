@@ -7,7 +7,7 @@ use anchor_lang::solana_program::sysvar::slot_hashes;
 declare_id!("3o6We5WQoGDM6wpQMPq5VE3fjvC7zgCUD56X12vLn917");
 
 #[program]
-pub mod orbital_engine {
+pub mod orbital_pulse {
     use super::*;
 
     /// Инициализация ядра и выдача Генезис-награды (3 $ORBIT)
