@@ -67,7 +67,7 @@ To verify the functionality of the **Proof-of-Pause** algorithm and compliance w
   [`3o6We5...vLn917`](https://explorer.solana.com/address/3o6We5WQoGDM6wpQMPq5VE3fjvC7zgCUD56X12vLn917?cluster=devnet)
 
 - **Genesis Mint ($ORBIT):**  
-  [`JDveDC...vyjf`](https://explorer.solana.com/address/JDveDCK913Gg2Cx4s4gak7aHg8ozEJaQdcNiPWNvvyjf?cluster=devnet)
+  [`JDveDC...vyjf`](https://explorer.solana.com/address/6feTb4jAUJFkw5Cd1NQGXkUPtHhLnocyDL9S7Q9niuVE?cluster=devnet)
 
 ### How to Verify Proof of Pause
 
