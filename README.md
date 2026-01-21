@@ -72,3 +72,47 @@ genesis event recorded on-chain.
 │ └── Theory_TFAPSI_RU.pdf
 ├── README.md
 
+
+---
+
+## Documentation
+
+### Russian (Original Works)
+- **Law of Admission** — formal statement and axioms  
+  `docs/Zakon_Dostupa_RU.pdf`
+
+- **TFAPSI** — theoretical foundation and phase model  
+  `docs/Theory_TFAPSI_RU.pdf`
+
+### English Summary
+
+This project implements the *Law of Admission* as an on-chain system
+where information convergence is governed by phase stability and noise.
+The blockchain acts as an external entropy source and a verifier of state transitions.
+
+---
+
+## Scientific Status
+
+This repository represents:
+- a formalized theoretical model
+- an on-chain executable experiment
+- a reproducible proof of implementation
+
+The blockchain serves as:
+- timestamp authority
+- state verifier
+- immutable record of authorship and priority
+
+---
+
+## License
+
+Recommended: **Apache License 2.0**  
+Ensures openness while protecting the author from patent capture.
+
+---
+
+## Author
+
+© 2026 — **Yuri Slaschev**
