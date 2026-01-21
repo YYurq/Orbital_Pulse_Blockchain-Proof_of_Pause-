@@ -79,7 +79,7 @@ genesis event recorded on-chain.
 
 ### Russian (Original Works)
 - **Law of Admission** — formal statement and axioms  
-  `docs/Zakon_Dostupa_RU.pdf`
+  `docs/Law_of_Admission_(RU).pdf`
 
 - **TFAPSI** — theoretical foundation and phase model  
   `docs/Theory_TFAPSI_RU.pdf`
