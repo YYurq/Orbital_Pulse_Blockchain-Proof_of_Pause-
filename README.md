@@ -81,8 +81,8 @@ genesis event recorded on-chain.
 - **Law of Admission** — formal statement and axioms  
   `docs/Law_of_Admission_(RU).pdf`
 
-- **TFAPSI** — theoretical foundation and phase model  
-  `docs/Theory_TFAPSI_RU.pdf`
+- **TPAPCI** — theoretical foundation and phase model  
+  `docs/TPAPCI_Theory_(RU).pdf`
 
 ### English Summary
 
