@@ -90,7 +90,7 @@ formal admissibility rules, rather than randomness or external intervention.
 .
 ├── github
 │   ├──
-│   ├──
+│   ├── workflows
 │   └── PULL_REQUEST_TEMPLATE.md
 ├── programs
 │   └── orbital_pulse
