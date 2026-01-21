@@ -88,6 +88,10 @@ formal admissibility rules, rather than randomness or external intervention.
 ## Repository Structure
 ```text
 .
+├── github
+│   ├──
+│   ├──
+│   └──
 ├── programs
 │   └── orbital_pulse
 │       ├── Cargo.toml
