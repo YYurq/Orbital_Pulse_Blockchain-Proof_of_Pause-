@@ -11,4 +11,3 @@ panic = "abort"
 
 [profile.release.build-override]
 opt-level = 3
-пусто, так как зависимости определяются в подпапках программ
