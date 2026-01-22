@@ -1,5 +1,11 @@
 [toolchain]
-anchor_version = "0.29.0"
+
+[features]
+seeds = false
+skip-lint = false
+
+[programs.localnet]
+orbital_pulse = "3o6We5WQoGDM6wpQMPq5VE3fjvC7zgCUD56X12vLn917"
 
 [programs.devnet]
 orbital_pulse = "3o6We5WQoGDM6wpQMPq5VE3fjvC7zgCUD56X12vLn917"
