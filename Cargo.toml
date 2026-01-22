@@ -6,17 +6,8 @@ edition = "2021"
 
 [lib]
 crate-type = ["cdylib", "lib"]
-name = "orbital_pulse"
-
-[features]
-no-entrypoint = []
-no-idl = []
-no-log-ix-name = []
-cpi = ["no-entrypoint"]
-default = []
-# ВАЖНО: эта фича позволяет использовать init_if_needed
-init-if-needed = ["anchor-lang/init-if-needed"]
+name = "orbital_pulse" # Убедитесь, что здесь именно подчеркивание
 
 [dependencies]
 anchor-lang = { version = "0.29.0", features = ["init-if-needed"] }
-anchor-spl = { version = "0.29.0", features = ["metadata"] }
+anchor-spl = { version = "0.29.0" }
