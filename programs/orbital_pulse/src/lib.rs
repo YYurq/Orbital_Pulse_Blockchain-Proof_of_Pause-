@@ -5,17 +5,23 @@ use anchor_lang::solana_program::sysvar::slot_hashes;
 
 declare_id!("3o6We5WQoGDM6wpQMPq5VE3fjvC7zgCUD56X12vLn917");
 
+const MIN_GRAD: u64 = 1;
+const MAX_GRAD: u64 = 10;
+const DEF_GRAD: u64 = 2;
+
 #[program]
 pub mod orbital_pulse {
     use super::*;
 
-    pub fn initialize(ctx: Context<Initialize>, epsilon: u64) -> Result<()> {
+    pub fn initialize(ctx: Context<Initialize>, epsilon: u64, threshold_percent: Option<u64>) -> Result<()> {
         let state = &mut ctx.accounts.state;
         state.authority = ctx.accounts.signer.key();
         state.epsilon = epsilon;
+        state.current_depth = 11;
+        let p = threshold_percent.unwrap_or(DEF_GRAD);
+        state.gradient_threshold_percent = p.clamp(MIN_GRAD, MAX_GRAD);
         state.last_noise = 0;
         state.current_orbit = 0;
-        state.current_depth = 11;
         state.head = 0;
         state.variance_index = 0;
         state.prev_variance_index = 0;
@@ -25,79 +31,61 @@ pub mod orbital_pulse {
 
     pub fn try_transition(ctx: Context<Transition>) -> Result<()> {
         let state = &mut ctx.accounts.state;
-        
-        // 1. Извлечение энтропии
         let data = ctx.accounts.slot_hashes.try_borrow_data()?;
-        let recent_hash: [u8; 32] = data[12..44].try_into().map_err(|_| ErrorCode::HashNotFound)?;
-        let noise_hash = hashv(&[&recent_hash, &state.authority.to_bytes()]);
-        let noise = u64::from_le_bytes(noise_hash.as_ref()[0..8].try_into().unwrap());
-        
+        let hash: [u8; 32] = data[12..44].try_into().map_err(|_| ErrorCode::HashNotFound)?;
+        let n_hash = hashv(&[&hash, &state.authority.to_bytes()]);
+        let noise = u64::from_le_bytes(n_hash.as_ref()[0..8].try_into().unwrap());
         let delta = if noise > state.last_noise { noise - state.last_noise } else { state.last_noise - noise };
 
-        // 2. Спектральный след (локальная копия индекса для Borrow Checker)
         let h_idx = state.head as usize;
         state.history[h_idx] = delta;
         state.head = (state.head + 1) % 16;
 
-        // 3. Вычисление мгновенной дисперсии
-        let mut sum: u128 = 0;
-        let depth = state.current_depth as usize;
-        let current_head = state.head as usize;
+        let d_v = state.current_depth as u128;
+        if d_v == 0 { return Err(ErrorCode::InvalidDepth.into()); }
 
-        for i in 0..depth {
-            let idx = (current_head + 16 - 1 - i) % 16;
+        let mut sum: u128 = 0;
+        let c_h = state.head as usize;
+        for i in 0..state.current_depth as usize {
+            let idx = (c_h + 16 - 1 - i) % 16;
             sum += state.history[idx] as u128;
         }
-        let avg = sum / depth as u128;
+        let avg = sum / d_v;
         
-        let mut variance_sum: u128 = 0;
-        for i in 0..depth {
-            let idx = (current_head + 16 - 1 - i) % 16;
+        let mut v_sum: u128 = 0;
+        for i in 0..state.current_depth as usize {
+            let idx = (c_h + 16 - 1 - i) % 16;
             let val = state.history[idx] as u128;
             let diff = if val > avg { val - avg } else { avg - val };
-            variance_sum = variance_sum.saturating_add(diff * diff);
+            v_sum = v_sum.saturating_add(diff.saturating_mul(diff));
         }
 
-        // 4. Логарифмическая нормализация (Fine Log)
-        let mean_variance = variance_sum / depth as u128;
-        let msb = 128 - mean_variance.leading_zeros() as i32;
-        
-        let fine_log = if msb > 8 {
-            let integer_part = (msb as u64) << 8; 
-            let fractional_part = ((mean_variance >> (msb - 8)) & 0xFF) as u64;
-            integer_part + fractional_part
+        let m_v = v_sum / d_v;
+        let msb = 128 - m_v.leading_zeros() as i32;
+        let f_log = if msb > 8 {
+            ((msb as u64) << 8) + ((m_v >> (msb - 8)) & 0xFF) as u64
         } else if msb > 0 { (msb as u64) << 8 } else { 0 };
 
-        state.last_fine_log = fine_log;
-
-        // 5. EMA и Адаптивная глубина
+        state.last_fine_log = f_log;
         state.prev_variance_index = state.variance_index;
-        state.variance_index = ((state.variance_index as f64 * 0.8) + (fine_log as f64 * 0.2)) as u64;
+        state.variance_index = (state.variance_index.saturating_mul(4).saturating_add(f_log)) / 5;
         
-        let gradient = state.variance_index as i64 - state.prev_variance_index as i64;
-        if gradient < 0 && state.current_depth > 7 { state.current_depth -= 1; }
-        else if gradient > 0 && state.current_depth < 15 { state.current_depth += 1; }
+        let grad = state.variance_index as i64 - state.prev_variance_index as i64;
+        let thr = state.variance_index.saturating_mul(state.gradient_threshold_percent) / 100;
 
-        // 6. Условие Резонанса
+        if grad < -(thr as i64) && state.current_depth > 7 { state.current_depth -= 1; }
+        else if grad > (thr as i64) && state.current_depth < 15 { state.current_depth += 1; }
+
         if delta < state.epsilon && state.variance_index < (state.epsilon.saturating_mul(10)) {
             state.current_orbit = (state.current_orbit + 1) % 5;
-            let bump = ctx.bumps.mint;
-            let seeds = &[b"orbital-genesis".as_ref(), &[bump]];
-            token::mint_to(
-                CpiContext::new_with_signer(
-                    ctx.accounts.token_program.to_account_info(),
-                    MintTo {
-                        mint: ctx.accounts.mint.to_account_info(),
-                        to: ctx.accounts.token_account.to_account_info(),
-                        authority: ctx.accounts.mint.to_account_info(),
-                    },
-                    &[&seeds[..]],
-                ),
-                100_000_000 
-            )?;
+            let seeds = &[b"orbital-genesis".as_ref(), &[ctx.bumps.mint]];
+            token::mint_to(CpiContext::new_with_signer(ctx.accounts.token_program.to_account_info(), MintTo {
+                mint: ctx.accounts.mint.to_account_info(),
+                to: ctx.accounts.token_account.to_account_info(),
+                authority: ctx.accounts.mint.to_account_info(),
+            }, &[&seeds[..]]), 100_000_000)?;
             state.epsilon = state.epsilon.saturating_sub(state.epsilon / 100);
         }
-
         state.last_noise = noise;
         Ok(())
     }
@@ -115,11 +103,16 @@ pub struct PulseState {
     pub variance_index: u64,      
     pub prev_variance_index: u64, 
     pub last_fine_log: u64,
+    pub gradient_threshold_percent: u64,
+}
+
+impl PulseState {
+    pub const LEN: usize = 8 + 32 + 8 + 8 + 1 + 128 + 1 + 1 + 8 + 8 + 8 + 8;
 }
 
 #[derive(Accounts)]
 pub struct Initialize<'info> {
-    #[account(init, payer = signer, space = 8 + 211)]
+    #[account(init, payer = signer, space = PulseState::LEN)]
     pub state: Account<'info, PulseState>,
     #[account(init_if_needed, payer = signer, mint::decimals = 9, mint::authority = mint, seeds = [b"orbital-genesis"], bump)]
     pub mint: Account<'info, Mint>,
@@ -150,5 +143,6 @@ pub struct Transition<'info> {
 
 #[error_code]
 pub enum ErrorCode {
-    #[msg("Хеш не найден")] HashNotFound,
+    #[msg("Err: Hash")] HashNotFound,
+    #[msg("Err: Depth")] InvalidDepth,
 }
