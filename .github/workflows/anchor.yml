@@ -22,32 +22,28 @@ jobs:
         with:
           toolchain: 1.75.0
 
-      - name: Install Solana (Fixed SSL method)
+      - name: Install Solana (Direct Download from GitHub)
         run: |
-          # Используем альтернативный метод загрузки через wget, который игнорирует некоторые ошибки SSL
-          wget --no-check-certificate https://release.solana.com/v1.17.0/install
-          chmod +x install
-          ./install
+          # Скачиваем бинарники напрямую из релизов GitHub (это быстрее и SSL не падает)
+          wget https://github.com/solana-labs/solana/releases/download/v1.17.0/solana-release-x86_64-unknown-linux-gnu.tar.bz2
+          tar jxf solana-release-x86_64-unknown-linux-gnu.tar.bz2
           
-          # Устанавливаем пути принудительно
-          SOLANA_BIN="$HOME/.local/share/solana/install/active_release/bin"
-          echo "$SOLANA_BIN" >> $GITHUB_PATH
-          # Проверка наличия директории
-          ls -la $SOLANA_BIN || echo "Директория еще не создана"
+          # Настраиваем PATH
+          echo "$GITHUB_WORKSPACE/solana-release/bin" >> $GITHUB_PATH
+          # Делаем проверку
+          ./solana-release/bin/solana --version
 
       - name: Install Anchor CLI
         run: |
-          # Установка через NPM — это самый быстрый путь в CI
           npm install -g @coral-xyz/anchor-cli@0.29.0
           echo "$(npm config get prefix)/bin" >> $GITHUB_PATH
 
       - name: Setup Solana Keypair
         run: |
-          # Используем полный путь к бинарнику, чтобы не зависеть от обновления PATH
-          $HOME/.local/share/solana/install/active_release/bin/solana-keygen new --no-bip39-passphrase -o ~/.config/solana/id.json
+          # Используем скачанные бинарники
+          $GITHUB_WORKSPACE/solana-release/bin/solana-keygen new --no-bip39-passphrase -o ~/.config/solana/id.json
 
       - name: Build Program
         run: |
-          # Добавляем путь вручную для текущей сессии
-          export PATH="$HOME/.local/share/solana/install/active_release/bin:$PATH"
+          export PATH="$GITHUB_WORKSPACE/solana-release/bin:$PATH"
           anchor build
