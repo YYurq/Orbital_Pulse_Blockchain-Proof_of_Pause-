@@ -7,12 +7,6 @@ skip-lint = false
 [programs.localnet]
 orbital_pulse = "3o6We5WQoGDM6wpQMPq5VE3fjvC7zgCUD56X12vLn917"
 
-[programs.devnet]
-orbital_pulse = "3o6We5WQoGDM6wpQMPq5VE3fjvC7zgCUD56X12vLn917"
-
-[registry]
-url = "https://anchor.projectserum.com"
-
 [provider]
 cluster = "Localnet"
 wallet = "~/.config/solana/id.json"
@@ -20,7 +14,6 @@ wallet = "~/.config/solana/id.json"
 [scripts]
 test = "yarn run ts-mocha -p ./tsconfig.json -t 120000 tests/**/*.ts"
 
-[test]
 [test.validator]
 url = "https://api.mainnet-beta.solana.com"
 
