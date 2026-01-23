@@ -1,4 +1,4 @@
-name: Code Integrity Check
+name: Anchor Build
 
 on:
   push:
@@ -7,28 +7,32 @@ on:
     branches: [ main ]
 
 jobs:
-  check-rust:
+  build:
     runs-on: ubuntu-latest
     steps:
-    - uses: actions/checkout@v3
-    - name: Install Rust
-      uses: actions-rs/toolchain@v1
-      with:
-        toolchain: stable
-        override: true
-    - name: Run Cargo Check
-      run: cargo check # Проверяет синтаксис Rust. Быстро и надежно.
+      - uses: actions/checkout@v3
 
-  check-typescript:
-    runs-on: ubuntu-latest
-    steps:
-    - uses: actions/checkout@v3
-    - name: Install Node.js
-      uses: actions/setup-node@v3
-      with:
-        node-version: 18
-    - run: npm install -g typescript
-    - name: TS Compile Check
-      run: |
-        # Мы просто проверяем, что в тестах нет синтаксических ошибок
-        cd tests && npx tsc --noEmit || true
+      - name: Install Linux Dependencies
+        run: |
+          sudo apt-get update
+          sudo apt-get install -y pkg-config build-essential libudev-dev
+
+      - name: Install Rust
+        uses: dtolnay/rust-toolchain@stable
+        with:
+          toolchain: 1.75.0 # Стабильная версия для Anchor 0.29.0
+
+      - name: Install Solana CLI
+        run: |
+          sh -c "$(curl -sSfL https://release.solana.com/v1.17.0/install)"
+          echo "/home/runner/.local/share/solana/install/active_release/bin" >> $GITHUB_PATH
+
+      - name: Install Anchor CLI
+        run: |
+          cargo install --git https://github.com/coral-xyz/anchor --tag v0.29.0 anchor-cli --locked
+
+      - name: Generate Keypair
+        run: solana-keygen new --no-bip39-passphrase -o ~/.config/solana/id.json
+
+      - name: Build Program
+        run: anchor build
