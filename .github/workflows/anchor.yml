@@ -18,10 +18,11 @@ jobs:
           sudo apt-get install -y pkg-config build-essential libudev-dev libssl-dev
 
       - name: Install Rust Nightly
+        # Удалил некорректный параметр 'override'
         uses: dtolnay/rust-toolchain@nightly
         with:
           toolchain: nightly
-          override: true
+          components: rustfmt, clippy
 
       - name: Install Solana
         run: |
@@ -36,24 +37,21 @@ jobs:
 
       - name: Build Program
         run: |
-          # 1. Настройка путей
           export PATH="$GITHUB_WORKSPACE/solana-release/bin:$PATH"
           export RUSTC_BOOTSTRAP=1
           
-          # 2. ПРИНУДИТЕЛЬНОЕ УДАЛЕНИЕ LOCK-ФАЙЛОВ
-          # Удаляем во всех папках, чтобы старая версия 4 не блокировала билд
+          # Устанавливаем nightly как стандарт для всей сессии
+          rustup default nightly
+          
+          # Очищаем все старые Lock-файлы (включая подпапки)
           find . -name "Cargo.lock" -delete
           
-          # 3. ПЕРЕГЕНЕРАЦИЯ LOCK-ФАЙЛА
-          # Создаем новый файл средствами Rust Nightly (версия будет совместима)
+          # Создаем новый файл версии, которую поймет текущий Cargo
           cargo generate-lockfile
           
-          # 4. ПОДГОТОВКА КОШЕЛЬКА
+          # Подготовка ключа Соланы
           mkdir -p ~/.config/solana
-          if [ ! -f ~/.config/solana/id.json ]; then
-            solana-keygen new --no-bip39-passphrase -o ~/.config/solana/id.json
-          fi
+          solana-keygen new --no-bip39-passphrase -o ~/.config/solana/id.json || echo "Key already exists"
           
-          # 5. СБОРКА
-          # Используем команду 'anchor build', теперь Cargo не выдаст ошибку парсинга
+          # Финальная сборка
           anchor build
