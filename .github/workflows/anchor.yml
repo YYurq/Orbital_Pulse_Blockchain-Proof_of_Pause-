@@ -12,7 +12,7 @@ jobs:
     steps:
       - uses: actions/checkout@v3
 
-      - name: Install Linux Dependencies
+      - name: Install Dependencies
         run: |
           sudo apt-get update
           sudo apt-get install -y pkg-config build-essential libudev-dev
@@ -20,19 +20,28 @@ jobs:
       - name: Install Rust
         uses: dtolnay/rust-toolchain@stable
         with:
-          toolchain: 1.75.0 # Стабильная версия для Anchor 0.29.0
+          toolchain: 1.75.0
 
       - name: Install Solana CLI
         run: |
           sh -c "$(curl -sSfL https://release.solana.com/v1.17.0/install)"
-          echo "/home/runner/.local/share/solana/install/active_release/bin" >> $GITHUB_PATH
+          # Добавляем путь в текущую сессию и в будущие шаги
+          echo "$HOME/.local/share/solana/install/active_release/bin" >> $GITHUB_PATH
+          export PATH="$HOME/.local/share/solana/install/active_release/bin:$PATH"
+          solana --version
 
       - name: Install Anchor CLI
         run: |
           cargo install --git https://github.com/coral-xyz/anchor --tag v0.29.0 anchor-cli --locked
+          # Путь для cargo бинарников обычно уже есть, но добавим для надежности
+          echo "$HOME/.cargo/bin" >> $GITHUB_PATH
 
-      - name: Generate Keypair
-        run: solana-keygen new --no-bip39-passphrase -o ~/.config/solana/id.json
+      - name: Setup Solana Keypair
+        run: |
+          # Используем полный путь, если команда все еще "не найдена"
+          $HOME/.local/share/solana/install/active_release/bin/solana-keygen new --no-bip39-passphrase -o ~/.config/solana/id.json
 
       - name: Build Program
-        run: anchor build
+        run: |
+          export PATH="$HOME/.local/share/solana/install/active_release/bin:$PATH"
+          anchor build
