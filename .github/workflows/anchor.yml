@@ -18,7 +18,6 @@ jobs:
           sudo apt-get install -y pkg-config build-essential libudev-dev libssl-dev
 
       - name: Install Rust Nightly
-        # Используем актуальный экшен для установки nightly
         uses: dtolnay/rust-toolchain@nightly
         with:
           toolchain: nightly
@@ -37,13 +36,16 @@ jobs:
 
       - name: Build Program
         run: |
-          # Принудительно используем nightly для сборки
           export PATH="$GITHUB_WORKSPACE/solana-release/bin:$PATH"
           export RUSTC_BOOTSTRAP=1
           
-          # Создаем конфиг соланы, если его нет
+          # КЛЮЧЕВОЙ ШАГ: Перегенерируем lock-файл под текущий Cargo
+          # Это устранит ошибку версии 4, если Cargo её не понимает
+          cargo update
+          
           mkdir -p ~/.config/solana
           solana-keygen new --no-bip39-passphrase -o ~/.config/solana/id.json || echo "Key exists"
           
-          # Теперь Cargo nightly поймет версию 4 в lock-файле
+          # Явное указание использовать nightly через переменную окружения
+          rustup default nightly
           anchor build
