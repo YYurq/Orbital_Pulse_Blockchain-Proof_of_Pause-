@@ -1,24 +1,38 @@
-[toolchain]
+name: Anchor Build
 
-[features]
-seeds = false
-skip-lint = false
+on:
+  push:
+    branches: [ main ]
+  pull_request:
+    branches: [ main ]
 
-[programs.localnet]
-orbital_pulse = "3o6We5WQoGDM6wpQMPq5VE3fjvC7zgCUD56X12vLn917"
+jobs:
+  build:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v3
 
-[registry]
-url = "https://anchor.projectserum.com"
+      - name: Install Linux Dependencies
+        run: |
+          sudo apt-get update
+          sudo apt-get install -y pkg-config build-essential libudev-dev
 
-[provider]
-cluster = "Localnet"
-wallet = "~/.config/solana/id.json"
+      - name: Install Rust
+        uses: dtolnay/rust-toolchain@stable
+        with:
+          toolchain: 1.75.0 # Стабильная версия для Anchor 0.29.0
 
-[scripts]
-test = "yarn run ts-mocha -p ./tsconfig.json -t 120000 tests/**/*.ts"
+      - name: Install Solana CLI
+        run: |
+          sh -c "$(curl -sSfL https://release.solana.com/v1.17.0/install)"
+          echo "/home/runner/.local/share/solana/install/active_release/bin" >> $GITHUB_PATH
 
-[test.validator]
-url = "https://api.mainnet-beta.solana.com"
+      - name: Install Anchor CLI
+        run: |
+          cargo install --git https://github.com/coral-xyz/anchor --tag v0.29.0 anchor-cli --locked
 
-[[test.validator.clone]]
-address = "SysvarS1otHashes111111111111111111111111111"
+      - name: Generate Keypair
+        run: solana-keygen new --no-bip39-passphrase -o ~/.config/solana/id.json
+
+      - name: Build Program
+        run: anchor build
