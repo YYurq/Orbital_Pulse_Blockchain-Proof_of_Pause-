@@ -6,7 +6,7 @@ use anchor_lang::solana_program::sysvar::slot_hashes;
 
 declare_id!("3o6We5WQoGDM6wpQMPq5VE3fjvC7zgCUD56X12vLn917");
 
-const CALIBRATION_STEPS: u8 = 16; 
+const CALIBRATION_STEPS: u8 = 16;
 
 #[program]
 pub mod orbital_pulse {
@@ -15,11 +15,11 @@ pub mod orbital_pulse {
     pub fn initialize(ctx: Context<Initialize>, threshold_percent: u64) -> Result<()> {
         let state = &mut ctx.accounts.state;
         state.authority = ctx.accounts.signer.key();
-        state.history = [0u64; 16]; 
+        state.history = [0u64; 16];
         state.calib_count = 0;
         state.is_born = false;
         state.gradient_threshold_percent = threshold_percent.clamp(1, 10);
-        state.mode = 255; 
+        state.mode = 255;
         state.epsilon = 0;
         state.x_control = 0;
         state.current_depth = 11;
@@ -40,15 +40,15 @@ pub mod orbital_pulse {
         let delta = if noise > state.last_noise { noise - state.last_noise } else { state.last_noise - noise };
 
         if !state.is_born {
-            let idx = state.calib_count as usize; 
+            let idx = state.calib_count as usize;
             state.history[idx] = delta;
             state.calib_count += 1;
             if state.calib_count == CALIBRATION_STEPS {
                 let mut h = state.history;
                 h[0..CALIBRATION_STEPS as usize].sort();
-                state.epsilon = h[CALIBRATION_STEPS as usize / 2]; 
+                state.epsilon = h[CALIBRATION_STEPS as usize / 2];
                 state.is_born = true;
-                state.mode = 0; 
+                state.mode = 0;
             }
             state.last_noise = noise;
             return Ok(());
@@ -107,15 +107,18 @@ pub mod orbital_pulse {
         }
 
         if state.mode == 0 && delta < state.epsilon {
-            let bump = ctx.bumps.mint; // Используем bump напрямую из контекста
-            let seeds = &[b"orbital-genesis".as_ref(), &[bump]];
+            // Исправленный доступ к бампам через автоматическую структуру
+            let seeds = &[b"orbital-genesis".as_ref(), &[ctx.bumps.mint]];
             let signer = &[&seeds[..]];
-            let cpi_accounts = MintTo {
-                mint: ctx.accounts.mint.to_account_info(),
-                to: ctx.accounts.token_account.to_account_info(),
-                authority: ctx.accounts.mint.to_account_info(),
-            };
-            let cpi_ctx = CpiContext::new_with_signer(ctx.accounts.token_program.to_account_info(), cpi_accounts, signer);
+            let cpi_ctx = CpiContext::new_with_signer(
+                ctx.accounts.token_program.to_account_info(),
+                MintTo {
+                    mint: ctx.accounts.mint.to_account_info(),
+                    to: ctx.accounts.token_account.to_account_info(),
+                    authority: ctx.accounts.mint.to_account_info(),
+                },
+                signer,
+            );
             anchor_spl::token::mint_to(cpi_ctx, 100_000_000)?;
         }
 
@@ -194,4 +197,4 @@ pub enum ErrorCode {
     HashNotFound,
     #[msg("Invalid Depth")]
     InvalidDepth,
-}
+            }
