@@ -12,22 +12,30 @@ jobs:
     steps:
       - uses: actions/checkout@v3
 
-      # ШАГ 1: Полная зачистка ДО установки Rust и всего остального
-      - name: Force Clean Lockfiles
+      - name: Force Clean environment
         run: |
-          echo "Removing all Cargo.lock files to avoid version 4 conflict..."
-          rm -f Cargo.lock
+          # Удаляем Lock-файлы сразу после скачивания кода
           find . -name "Cargo.lock" -type f -delete
+          echo "All Cargo.lock files removed."
 
       - name: Install System Dependencies
         run: |
           sudo apt-get update
           sudo apt-get install -y pkg-config build-essential libudev-dev libssl-dev
 
-      - name: Install Rust Nightly
-        uses: dtolnay/rust-toolchain@nightly
-        with:
-          toolchain: nightly
+      - name: Install Latest Rust Nightly
+        run: |
+          # Прямая установка через rustup гарантирует самую свежую версию Cargo
+          curl --proto '=https' --tlsv1.2 -sSf https://sh.rustup.rs | sh -s -- -y --default-toolchain nightly
+          # Подгружаем переменные окружения в текущую оболочку
+          echo "$HOME/.cargo/bin" >> $GITHUB_PATH
+          source $HOME/.cargo/env
+          rustup default nightly
+          
+          echo "Rust version:"
+          rustc --version
+          echo "Cargo version:"
+          cargo --version
 
       - name: Install Solana
         run: |
@@ -42,16 +50,14 @@ jobs:
 
       - name: Build Program
         run: |
+          # Подгружаем пути еще раз для уверенности
+          source $HOME/.cargo/env
           export PATH="$GITHUB_WORKSPACE/solana-release/bin:$PATH"
           export RUSTC_BOOTSTRAP=1
           
-          # Явно переключаемся на nightly
-          rustup default nightly
-          
-          # Генерируем новый lock-файл средствами установленного Cargo
-          cargo generate-lockfile
-          
+          # Подготовка ключа
           mkdir -p ~/.config/solana
           solana-keygen new --no-bip39-passphrase -o ~/.config/solana/id.json || echo "Key exists"
           
+          # Сборка. Теперь Cargo версии 1.90+ сам создаст валидный Lock
           anchor build
