@@ -13,8 +13,9 @@ jobs:
       - name: Checkout Code
         uses: actions/checkout@v3
 
-      - name: Hard Cleanup
+      - name: Clean Environment
         run: |
+          # Удаляем старые файлы, если они есть
           find . -name "Cargo.lock" -type f -delete
           rm -f Cargo.lock
 
@@ -22,7 +23,7 @@ jobs:
         run: |
           set -e
           
-          echo "=== 1. System Dependencies ==="
+          echo "=== 1. Install Dependencies ==="
           sudo apt-get update
           sudo apt-get install -y pkg-config build-essential libudev-dev libssl-dev
           
@@ -32,37 +33,41 @@ jobs:
           echo "$HOME/.cargo/bin" >> $GITHUB_PATH
           rustup default nightly
           
-          echo "=== 3. Install Solana ==="
+          echo "=== 3. Install Solana Toolchain ==="
           wget -q https://github.com/solana-labs/solana/releases/download/v1.17.0/solana-release-x86_64-unknown-linux-gnu.tar.bz2
           tar jxf solana-release-x86_64-unknown-linux-gnu.tar.bz2
           echo "$GITHUB_WORKSPACE/solana-release/bin" >> $GITHUB_PATH
           export PATH="$GITHUB_WORKSPACE/solana-release/bin:$HOME/.cargo/bin:$PATH"
           
-          echo "=== 4. Install Anchor ==="
+          echo "=== 4. Install Anchor CLI ==="
           npm install -g @coral-xyz/anchor-cli@0.29.0
           
           echo "=== 5. Setup Keypair ==="
           mkdir -p ~/.config/solana
           solana-keygen new --no-bip39-passphrase -o ~/.config/solana/id.json || echo "Key exists"
           
-          echo "=== 6. Force Downgrade Dependencies ==="
-          # Создаем чистый Lock-файл
+          echo "=== 6. Resolve Dependencies (Cargo 1.95) ==="
+          # Генерируем лок-файл (он создастся как v4)
           cargo generate-lockfile
           
-          # Трюк с версией формата (v4 -> v3)
+          # Принудительно откатываем пакеты, требующие Rust 1.75+
+          echo "Downgrading incompatible crates..."
+          cargo update -p borsh --precise 1.5.1 || echo "borsh skip"
+          cargo update -p blake3 --precise 1.5.1 || echo "blake3 skip"
+          cargo update -p toml_datetime --precise 0.6.3 || echo "toml skip"
+          cargo update -p solana-program --precise 1.17.0 || echo "solana-program skip"
+          
+          echo "=== 7. LOCK VERSION HACK (v4 -> v3) ==="
+          # ВАЖНО: Делаем это ПОСЛЕ всех команд cargo update, чтобы формат не вернулся в v4
           sed -i 's/version = 4/version = 3/g' Cargo.lock
+          echo "Successfully forced Cargo.lock to version 3"
+          head -n 5 Cargo.lock
           
-          # ПРИНУДИТЕЛЬНО устанавливаем старые версии из реестра Crates.io
-          # Это команды, которые НЕ требуют Git-ссылок и всегда находят пакеты
-          echo "Downgrading borsh, blake3 and others..."
-          cargo update -p borsh --precise 1.5.1 || echo "borsh update failed"
-          cargo update -p blake3 --precise 1.5.1 || echo "blake3 update failed"
-          cargo update -p toml_datetime --precise 0.6.3 || echo "toml update failed"
-          cargo update -p solana-program --precise 1.17.0 || echo "solana update failed"
-          
-          echo "=== 7. Build Anchor Program ==="
+          echo "=== 8. Build Anchor Program ==="
           export RUSTC_BOOTSTRAP=1
           export PATH="$GITHUB_WORKSPACE/solana-release/bin:$HOME/.cargo/bin:$PATH"
           
-          # Итоговый билд
-          anchor build
+          # Запускаем билд. Флаг --offline запрещает Cargo лезть в сеть и проверять версию лока
+          anchor build -- --offline || anchor build
+          
+          echo "=== BUILD COMPLETE ==="
