@@ -12,6 +12,14 @@ jobs:
     steps:
       - uses: actions/checkout@v3
 
+      - name: Hard Delete Lock Files
+        run: |
+          # Это удалит файл физически из файловой системы раннера
+          # до того, как любая утилита Rust начнет работу
+          rm -f Cargo.lock
+          find . -name "Cargo.lock" -type f -delete
+          echo "Cargo.lock files removed."
+
       - name: Install System Dependencies
         run: |
           sudo apt-get update
@@ -20,7 +28,7 @@ jobs:
       - name: Install Rust Nightly
         uses: dtolnay/rust-toolchain@nightly
         with:
-          toolchain: nightly-2025-10-01 # Используем очень свежий Nightly
+          toolchain: nightly-2025-05-01 # Используем версию 2025 года
 
       - name: Install Solana
         run: |
@@ -38,13 +46,8 @@ jobs:
           export PATH="$GITHUB_WORKSPACE/solana-release/bin:$PATH"
           export RUSTC_BOOTSTRAP=1
           
-          # КЛЮЧЕВОЙ МОМЕНТ: Удаляем Lock-файл прямо здесь, 
-          # чтобы Cargo даже не увидел его версию 4
-          find . -name "Cargo.lock" -type f -delete
-          
-          # Создаем кошелек
           mkdir -p ~/.config/solana
           solana-keygen new --no-bip39-passphrase -o ~/.config/solana/id.json || echo "Key exists"
           
-          # Запускаем сборку с обновлением зависимостей
+          # Запускаем сборку. Без Cargo.lock система сама создаст новый файл нужной версии.
           anchor build
