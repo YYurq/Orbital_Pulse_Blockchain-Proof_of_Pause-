@@ -12,6 +12,12 @@ jobs:
     steps:
       - uses: actions/checkout@v3
 
+      - name: Pre-cleaning
+        run: |
+          echo "=== Removing old Lock files immediately ==="
+          rm -f Cargo.lock
+          find . -name "Cargo.lock" -type f -delete
+
       - name: Build Orbital Pulse
         run: |
           set -e
@@ -23,35 +29,23 @@ jobs:
           echo "=== Installing Latest Rust Nightly ==="
           curl --proto '=https' --tlsv1.2 -sSf https://sh.rustup.rs | sh -s -- -y --default-toolchain nightly
           source $HOME/.cargo/env
-          rustup component add rustfmt clippy
           
           echo "=== Making Rust available system-wide ==="
-          # КРИТИЧНО: Создаём symlinks в /usr/local/bin (в PATH по умолчанию)
           sudo ln -sf $HOME/.cargo/bin/cargo /usr/local/bin/cargo
           sudo ln -sf $HOME/.cargo/bin/rustc /usr/local/bin/rustc
           sudo ln -sf $HOME/.cargo/bin/rustup /usr/local/bin/rustup
-          
-          echo "=== Verifying Rust Installation ==="
-          echo "rustc: $(rustc --version)"
-          echo "cargo: $(cargo --version)"
-          echo "cargo path: $(which cargo)"
           
           echo "=== Installing Solana ==="
           wget -q https://github.com/solana-labs/solana/releases/download/v1.17.0/solana-release-x86_64-unknown-linux-gnu.tar.bz2
           tar jxf solana-release-x86_64-unknown-linux-gnu.tar.bz2
           export PATH="$GITHUB_WORKSPACE/solana-release/bin:$PATH"
+          echo "$GITHUB_WORKSPACE/solana-release/bin" >> $GITHUB_PATH
           
           echo "=== Installing Anchor CLI ==="
           npm install -g @coral-xyz/anchor-cli@0.29.0
           
-          echo "=== Removing old Lock files ==="
-          rm -f Cargo.lock programs/*/Cargo.lock
-          find . -name "Cargo.lock" -type f -delete
-          
-          echo "=== Generating NEW Cargo.lock with Cargo 1.95 ==="
+          echo "=== Generating NEW Cargo.lock ==="
           cargo generate-lockfile
-          echo "Generated Lock version:"
-          head -3 Cargo.lock
           
           echo "=== Setting up Solana keypair ==="
           mkdir -p ~/.config/solana
@@ -59,10 +53,4 @@ jobs:
           
           echo "=== Building Anchor Program ==="
           export RUSTC_BOOTSTRAP=1
-          
-          # Verify cargo AGAIN before anchor build
-          echo "Final cargo check: $(cargo --version)"
-          
           anchor build
-          
-          echo "=== Build Complete ==="
