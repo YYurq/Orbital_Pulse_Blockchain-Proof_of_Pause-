@@ -12,9 +12,10 @@ name = "orbital_pulse"
 anchor-lang = "0.29.0"
 anchor-spl = "0.29.0"
 solana-program = "1.17.0"
-# Явно просим стабильную версию
-blake3 = "1.5.1"
 
 [patch.crates-io]
-# Математический "замок": перехватываем любой запрос на blake3 и отдаем версию 1.5.1
+# Фиксируем blake3, чтобы избежать требования edition2024
 blake3 = { git = "https://github.com/BLAKE3-team/BLAKE3", tag = "1.5.1" }
+
+# Фиксируем wit-bindgen на версии 0.24.0, которая стабильна и не требует edition2024
+wit-bindgen = { git = "https://github.com/bytecodealliance/wit-bindgen", tag = "v0.24.0" }
