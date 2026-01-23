@@ -3,7 +3,8 @@ members = ["programs/*"]
 resolver = "2"
 
 [patch.crates-io]
-# Откатываем wit-bindgen на версию, которая НЕ требует Rust 1.87
+# Откатываем solana-program на 1.17.0, чтобы не требовать Rust 1.75
+solana-program = { git = "https://github.com/solana-labs/solana", tag = "v1.17.0" }
+# Фиксируем вспомогательные библиотеки, которые начали требовать новый Rust
+toml_datetime = { git = "https://github.com/toml-rs/toml", tag = "toml_datetime-v0.6.3" }
 wit-bindgen = { git = "https://github.com/bytecodealliance/wit-bindgen", tag = "v0.24.0" }
-# Фиксируем blake3
-blake3 = { git = "https://github.com/BLAKE3-team/BLAKE3", tag = "1.5.1" }
