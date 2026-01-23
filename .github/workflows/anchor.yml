@@ -20,18 +20,13 @@ jobs:
       - name: Install Rust
         uses: dtolnay/rust-toolchain@stable
         with:
-          toolchain: 1.75.0
+          toolchain: 1.77.0
 
-      - name: Install Solana (Direct Download from GitHub)
+      - name: Install Solana (Direct Download)
         run: |
-          # Скачиваем бинарники напрямую из релизов GitHub (это быстрее и SSL не падает)
           wget https://github.com/solana-labs/solana/releases/download/v1.17.0/solana-release-x86_64-unknown-linux-gnu.tar.bz2
           tar jxf solana-release-x86_64-unknown-linux-gnu.tar.bz2
-          
-          # Настраиваем PATH
           echo "$GITHUB_WORKSPACE/solana-release/bin" >> $GITHUB_PATH
-          # Делаем проверку
-          ./solana-release/bin/solana --version
 
       - name: Install Anchor CLI
         run: |
@@ -40,7 +35,6 @@ jobs:
 
       - name: Setup Solana Keypair
         run: |
-          # Используем скачанные бинарники
           $GITHUB_WORKSPACE/solana-release/bin/solana-keygen new --no-bip39-passphrase -o ~/.config/solana/id.json
 
       - name: Build Program
