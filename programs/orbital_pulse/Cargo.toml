@@ -11,10 +11,3 @@ name = "orbital_pulse"
 anchor-lang = "0.29.0"
 anchor-spl = "0.29.0"
 solana-program = "1.17.0"
-# Эти две строки заставят Cargo искать более старые версии, совместимые с вашим кодом
-blake3 = ">=1.0, <1.8"
-wit-bindgen = ">=0.2, <0.30"
-
-[patch.crates-io]
-# Если патч через git не прошел, пробуем переопределить через конкретные версии
-blake3 = { git = "https://github.com/BLAKE3-team/BLAKE3", rev = "22c678a" } # ревизия версии 1.5.1
