@@ -22,26 +22,23 @@ jobs:
         with:
           toolchain: 1.75.0
 
-      - name: Install Solana CLI
-        run: |
-          sh -c "$(curl -sSfL https://release.solana.com/v1.17.0/install)"
-          # Добавляем путь в текущую сессию и в будущие шаги
-          echo "$HOME/.local/share/solana/install/active_release/bin" >> $GITHUB_PATH
-          export PATH="$HOME/.local/share/solana/install/active_release/bin:$PATH"
-          solana --version
+      - name: Install Solana
+        uses: anvil-xyz/setup-solana@v0
+        with:
+          solana-version: 1.17.0
 
       - name: Install Anchor CLI
         run: |
-          cargo install --git https://github.com/coral-xyz/anchor --tag v0.29.0 anchor-cli --locked
-          # Путь для cargo бинарников обычно уже есть, но добавим для надежности
-          echo "$HOME/.cargo/bin" >> $GITHUB_PATH
+          # Устанавливаем бинарную версию, это в 100 раз быстрее и надежнее
+          npm install -g @coral-xyz/anchor-cli@0.29.0
 
       - name: Setup Solana Keypair
         run: |
-          # Используем полный путь, если команда все еще "не найдена"
-          $HOME/.local/share/solana/install/active_release/bin/solana-keygen new --no-bip39-passphrase -o ~/.config/solana/id.json
+          mkdir -p ~/.config/solana
+          solana-keygen new --no-bip39-passphrase -o ~/.config/solana/id.json
 
       - name: Build Program
         run: |
-          export PATH="$HOME/.local/share/solana/install/active_release/bin:$PATH"
+          # Явно прописываем путь для npm бинарников
+          export PATH="/home/runner/.npm-global/bin:$PATH"
           anchor build
