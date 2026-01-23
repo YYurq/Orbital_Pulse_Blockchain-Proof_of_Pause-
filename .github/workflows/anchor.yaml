@@ -15,7 +15,6 @@ jobs:
 
       - name: Hard Cleanup
         run: |
-          echo "=== УДАЛЕНИЕ LOCK-ФАЙЛОВ ==="
           find . -name "Cargo.lock" -type f -delete
           rm -f Cargo.lock
 
@@ -33,41 +32,37 @@ jobs:
           echo "$HOME/.cargo/bin" >> $GITHUB_PATH
           rustup default nightly
           
-          echo "=== 3. Install Solana Toolchain ==="
+          echo "=== 3. Install Solana ==="
           wget -q https://github.com/solana-labs/solana/releases/download/v1.17.0/solana-release-x86_64-unknown-linux-gnu.tar.bz2
           tar jxf solana-release-x86_64-unknown-linux-gnu.tar.bz2
           echo "$GITHUB_WORKSPACE/solana-release/bin" >> $GITHUB_PATH
           export PATH="$GITHUB_WORKSPACE/solana-release/bin:$HOME/.cargo/bin:$PATH"
           
-          echo "=== 4. Install Anchor CLI ==="
+          echo "=== 4. Install Anchor ==="
           npm install -g @coral-xyz/anchor-cli@0.29.0
           
           echo "=== 5. Setup Keypair ==="
           mkdir -p ~/.config/solana
           solana-keygen new --no-bip39-passphrase -o ~/.config/solana/id.json || echo "Key exists"
           
-          echo "=== 6. Patch and Force Update Dependencies ==="
-          # Генерируем новый лок силами Nightly (он создаст v4)
+          echo "=== 6. Force Downgrade Dependencies ==="
+          # Создаем чистый Lock-файл
           cargo generate-lockfile
           
-          # Подменяем версию 4 на 3 для совместимости со старым Cargo внутри Solana 1.17
+          # Трюк с версией формата (v4 -> v3)
           sed -i 's/version = 4/version = 3/g' Cargo.lock
           
-          # ПРИНУДИТЕЛЬНО откатываем пакеты, которые требуют Rust 1.75+
-          echo "Forcing compatible versions..."
-          cargo update -p borsh --precise 1.5.1 || echo "borsh patch skipped"
-          cargo update -p blake3 --precise 1.5.1 || echo "blake3 patch skipped"
-          cargo update -p solana-program --precise 1.17.0 || echo "solana-program patch skipped"
-          cargo update -p toml_datetime --precise 0.6.3 || echo "toml_datetime patch skipped"
+          # ПРИНУДИТЕЛЬНО устанавливаем старые версии из реестра Crates.io
+          # Это команды, которые НЕ требуют Git-ссылок и всегда находят пакеты
+          echo "Downgrading borsh, blake3 and others..."
+          cargo update -p borsh --precise 1.5.1 || echo "borsh update failed"
+          cargo update -p blake3 --precise 1.5.1 || echo "blake3 update failed"
+          cargo update -p toml_datetime --precise 0.6.3 || echo "toml update failed"
+          cargo update -p solana-program --precise 1.17.0 || echo "solana update failed"
           
-          echo "=== 7. Final Environment Check ==="
+          echo "=== 7. Build Anchor Program ==="
           export RUSTC_BOOTSTRAP=1
           export PATH="$GITHUB_WORKSPACE/solana-release/bin:$HOME/.cargo/bin:$PATH"
-          cargo --version
-          rustc --version
           
-          echo "=== 8. Build Anchor Program ==="
-          # Запуск сборки. Если упадет - пробуем второй раз (иногда помогает с кэшем)
-          anchor build || (echo "Retry build..." && anchor build)
-          
-          echo "=== BUILD COMPLETE ==="
+          # Итоговый билд
+          anchor build
