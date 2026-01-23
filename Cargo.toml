@@ -3,7 +3,6 @@ members = ["programs/*"]
 resolver = "2"
 
 [patch.crates-io]
-# Фиксируем версии через реестр (без git-ссылок, чтобы не было ошибок с тегами)
-borsh = { git = "https://github.com/near/borsh-rs", rev = "cd83842" } # это хеш версии 1.5.1
-blake3 = { git = "https://github.com/BLAKE3-team/BLAKE3", rev = "6514693" }
+# Мы просто объявляем, что хотим использовать эти версии из общего реестра
+# без привязки к гит-репозиториям
 solana-program = { git = "https://github.com/solana-labs/solana", tag = "v1.17.0" }
