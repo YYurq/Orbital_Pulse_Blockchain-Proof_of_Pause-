@@ -12,12 +12,22 @@ describe("orbital-pulse-final", function () {
 
   this.timeout(120000);
 
-  it("Full Initialization and Stabilization Protocol", async function () {
-    const [mintPda] = anchor.web3.PublicKey.findProgramAddressSync([Buffer.from("orbital-genesis")], program.programId);
-    const tokenAccount = getAssociatedTokenAddressSync(mintPda, signer, false, TOKEN_PROGRAM_ID, ASSOCIATED_TOKEN_PROGRAM_ID);
+  it("Протокол Инициации: Рождение системы", async function () {
+    const [mintPda] = anchor.web3.PublicKey.findProgramAddressSync(
+      [Buffer.from("orbital-genesis")], 
+      program.programId
+    );
+    const tokenAccount = getAssociatedTokenAddressSync(
+      mintPda, 
+      signer, 
+      false, 
+      TOKEN_PROGRAM_ID, 
+      ASSOCIATED_TOKEN_PROGRAM_ID
+    );
 
+    console.log("--- 1. ИНИЦИАЛИЗАЦИЯ ---");
     await program.methods
-      .initialize(new anchor.BN(3))
+      .initialize(new anchor.BN(3)) 
       .accounts({
         state: stateAccount.publicKey,
         mint: mintPda,
@@ -32,6 +42,8 @@ describe("orbital-pulse-final", function () {
       .rpc();
 
     const modes = ["S0 (IDLE)", "S1 (CONTROL)", "S2 (EVOLVE)"];
+    console.log("--- 2. МОНИТОРИНГ РОЖДЕНИЯ ---");
+
     for (let i = 1; i <= 30; i++) {
       await program.methods.tryTransition().accounts({
         state: stateAccount.publicKey,
@@ -45,7 +57,7 @@ describe("orbital-pulse-final", function () {
       const state = await program.account.pulseState.fetch(stateAccount.publicKey);
       
       if (!state.isBorn) {
-        console.log(`[T=${i.toString().padStart(2, '0')}] CALIBRATION: Collecting entropy... ${state.calibCount}/16`);
+        console.log(`[T=${i.toString().padStart(2, '0')}] КАЛИБРОВКА: Накопление дельт... ${state.calibCount}/16`);
       } else {
         const varIdx = BigInt(state.varianceIndex.toString());
         const eps = BigInt(state.epsilon.toString());
@@ -55,11 +67,12 @@ describe("orbital-pulse-final", function () {
 
         console.log(
           `[T=${i.toString().padStart(2, '0')}] ${modes[state.mode] || "S0"} | ` +
-          `Vacuum: ${eps.toString().padEnd(20)} | ` +
-          `Energy: ${varIdx.toString().padEnd(10)} | ` +
-          `Control_X: ${load}%`
+          `Vac(Eps): ${eps.toString().padEnd(20)} | ` +
+          `Eng: ${varIdx.toString().padEnd(10)} | ` +
+          `Press: ${load}%`
         );
       }
     }
+    console.log("--- СИСТЕМА ОНТОЛОГИЧЕСКИ СТАБИЛЬНА ---");
   });
 });
