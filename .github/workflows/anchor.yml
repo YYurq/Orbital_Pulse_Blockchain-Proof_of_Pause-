@@ -12,56 +12,47 @@ jobs:
     steps:
       - uses: actions/checkout@v3
 
-      - name: Install System Dependencies
+      - name: Build Everything (Single Shell Session)
         run: |
+          set -e
+          
+          # System dependencies
+          echo "=== Installing System Dependencies ==="
           sudo apt-get update
           sudo apt-get install -y pkg-config build-essential libudev-dev libssl-dev
-
-      - name: Install Latest Rust Nightly
-        run: |
-          # Устанавливаем самый свежий nightly
+          
+          # Install LATEST Rust
+          echo "=== Installing Latest Rust Nightly ==="
           curl --proto '=https' --tlsv1.2 -sSf https://sh.rustup.rs | sh -s -- -y --default-toolchain nightly
           source $HOME/.cargo/env
           rustup component add rustfmt clippy
           
-          # Проверяем версию
           echo "=== Rust Version ==="
           rustc --version
           cargo --version
-
-      - name: Install Solana
-        run: |
-          wget https://github.com/solana-labs/solana/releases/download/v1.17.0/solana-release-x86_64-unknown-linux-gnu.tar.bz2
+          
+          # Install Solana
+          echo "=== Installing Solana ==="
+          wget -q https://github.com/solana-labs/solana/releases/download/v1.17.0/solana-release-x86_64-unknown-linux-gnu.tar.bz2
           tar jxf solana-release-x86_64-unknown-linux-gnu.tar.bz2
-          echo "$GITHUB_WORKSPACE/solana-release/bin" >> $GITHUB_PATH
-
-      - name: Install Anchor CLI
-        run: |
-          npm install -g @coral-xyz/anchor-cli@0.29.0
-
-      - name: Clean Old Lock Files
-        run: |
-          # КРИТИЧНО: удаляем Lock ПЕРЕД загрузкой Cargo env
-          echo "=== Removing old Cargo.lock files ==="
-          find . -name "Cargo.lock" -type f -exec rm -vf {} \;
-          
-          # Показываем что осталось
-          echo "=== Remaining Cargo.lock files (should be empty) ==="
-          find . -name "Cargo.lock" || echo "None found - OK"
-
-      - name: Build Program
-        run: |
-          # Загружаем свежий Cargo
-          source $HOME/.cargo/env
           export PATH="$GITHUB_WORKSPACE/solana-release/bin:$PATH"
-          export RUSTC_BOOTSTRAP=1
           
-          # Подготовка ключа Соланы
+          # Install Anchor
+          echo "=== Installing Anchor CLI ==="
+          npm install -g @coral-xyz/anchor-cli@0.29.0
+          
+          # Remove old Lock
+          echo "=== Removing old Cargo.lock ==="
+          find . -name "Cargo.lock" -type f -exec rm -vf {} \; || true
+          
+          # Setup Solana key
+          echo "=== Setting up Solana keypair ==="
           mkdir -p ~/.config/solana
           solana-keygen new --no-bip39-passphrase -o ~/.config/solana/id.json || true
           
+          # Build
           echo "=== Starting Anchor Build ==="
-          # Anchor создаст новый Lock v4 с правильным Cargo
+          export RUSTC_BOOTSTRAP=1
           anchor build
           
           echo "=== Build Complete ==="
