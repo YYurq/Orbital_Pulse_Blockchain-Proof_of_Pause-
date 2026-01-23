@@ -44,17 +44,19 @@ jobs:
           mkdir -p ~/.config/solana
           solana-keygen new --no-bip39-passphrase -o ~/.config/solana/id.json || echo "Key exists"
           
-          echo "=== 6. Patch and Update Dependencies ==="
-          # Генерация нового лока и применение патчей из Cargo.toml
+          echo "=== 6. Patch and Force Update ==="
+          # Генерация нового лока
           cargo generate-lockfile
-          # Принудительно понижаем версию, чтобы обмануть старый парсер
+          # Подменяем версию 4 на 3 для совместимости
           sed -i 's/version = 4/version = 3/g' Cargo.lock
-          # Обновляем дерево зависимостей согласно нашим [patch]
-          cargo update
+          
+          # ПРИНУДИТЕЛЬНО обновляем blake3 и solana-program до нужных версий
+          cargo update -p blake3 --precise 1.5.1 || echo "blake3 already patched"
+          cargo update -p solana-program --precise 1.17.0 || echo "solana-program already patched"
           
           echo "=== 7. Build Anchor Program ==="
           export RUSTC_BOOTSTRAP=1
-          # Используем системный путь для уверенности
           export PATH="$GITHUB_WORKSPACE/solana-release/bin:$HOME/.cargo/bin:$PATH"
           
+          # Запуск сборки
           anchor build
