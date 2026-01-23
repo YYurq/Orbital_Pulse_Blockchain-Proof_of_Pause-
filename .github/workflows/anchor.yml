@@ -12,33 +12,36 @@ jobs:
     steps:
       - uses: actions/checkout@v3
 
-      - name: Install Dependencies
+      - name: Install System Dependencies
         run: |
           sudo apt-get update
-          sudo apt-get install -y pkg-config build-essential libudev-dev
+          sudo apt-get install -y pkg-config build-essential libudev-dev libssl-dev
 
       - name: Install Rust
         uses: dtolnay/rust-toolchain@stable
         with:
           toolchain: 1.75.0
 
-      - name: Install Solana
-        uses: anvil-xyz/setup-solana@v0
-        with:
-          solana-version: 1.17.0
+      - name: Install Solana CLI
+        run: |
+          # Используем curl с повторными попытками при сбое сети (retry)
+          curl --retry 5 --retry-delay 5 -sSfL https://release.solana.com/v1.17.0/install | sh
+          # Принудительно прописываем путь в GITHUB_PATH
+          echo "/home/runner/.local/share/solana/install/active_release/bin" >> $GITHUB_PATH
 
       - name: Install Anchor CLI
         run: |
-          # Устанавливаем бинарную версию, это в 100 раз быстрее и надежнее
+          # Установка через NPM — самый быстрый и надежный способ в CI
           npm install -g @coral-xyz/anchor-cli@0.29.0
 
       - name: Setup Solana Keypair
         run: |
-          mkdir -p ~/.config/solana
+          # Используем полный путь, чтобы точно найти solana-keygen
+          export PATH="/home/runner/.local/share/solana/install/active_release/bin:$PATH"
           solana-keygen new --no-bip39-passphrase -o ~/.config/solana/id.json
 
       - name: Build Program
         run: |
-          # Явно прописываем путь для npm бинарников
-          export PATH="/home/runner/.npm-global/bin:$PATH"
+          export PATH="/home/runner/.local/share/solana/install/active_release/bin:$PATH"
+          # Синхронизируем зависимости и собираем
           anchor build
