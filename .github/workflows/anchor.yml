@@ -12,17 +12,22 @@ jobs:
     steps:
       - uses: actions/checkout@v3
 
+      # ШАГ 1: Полная зачистка ДО установки Rust и всего остального
+      - name: Force Clean Lockfiles
+        run: |
+          echo "Removing all Cargo.lock files to avoid version 4 conflict..."
+          rm -f Cargo.lock
+          find . -name "Cargo.lock" -type f -delete
+
       - name: Install System Dependencies
         run: |
           sudo apt-get update
           sudo apt-get install -y pkg-config build-essential libudev-dev libssl-dev
 
       - name: Install Rust Nightly
-        # Удалил некорректный параметр 'override'
         uses: dtolnay/rust-toolchain@nightly
         with:
           toolchain: nightly
-          components: rustfmt, clippy
 
       - name: Install Solana
         run: |
@@ -40,18 +45,13 @@ jobs:
           export PATH="$GITHUB_WORKSPACE/solana-release/bin:$PATH"
           export RUSTC_BOOTSTRAP=1
           
-          # Устанавливаем nightly как стандарт для всей сессии
+          # Явно переключаемся на nightly
           rustup default nightly
           
-          # Очищаем все старые Lock-файлы (включая подпапки)
-          find . -name "Cargo.lock" -delete
-          
-          # Создаем новый файл версии, которую поймет текущий Cargo
+          # Генерируем новый lock-файл средствами установленного Cargo
           cargo generate-lockfile
           
-          # Подготовка ключа Соланы
           mkdir -p ~/.config/solana
-          solana-keygen new --no-bip39-passphrase -o ~/.config/solana/id.json || echo "Key already exists"
+          solana-keygen new --no-bip39-passphrase -o ~/.config/solana/id.json || echo "Key exists"
           
-          # Финальная сборка
           anchor build
