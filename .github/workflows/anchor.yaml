@@ -12,7 +12,7 @@ jobs:
     steps:
       - uses: actions/checkout@v3
 
-      - name: Build Everything (Single Shell Session)
+      - name: Build Everything
         run: |
           set -e
           
@@ -27,9 +27,11 @@ jobs:
           source $HOME/.cargo/env
           rustup component add rustfmt clippy
           
+          # КРИТИЧНО: Показать версии
           echo "=== Rust Version ==="
-          rustc --version
-          cargo --version
+          echo "rustc: $(rustc --version)"
+          echo "cargo: $(cargo --version)"
+          echo "cargo path: $(which cargo)"
           
           # Install Solana
           echo "=== Installing Solana ==="
@@ -41,13 +43,15 @@ jobs:
           echo "=== Installing Anchor CLI ==="
           npm install -g @coral-xyz/anchor-cli@0.29.0
           
-          # КРИТИЧНО: Удалить Lock из Git cache И из файловой системы
+          # Force remove Lock
           echo "=== Force removing ALL Cargo.lock files ==="
           git rm -rf --cached Cargo.lock 2>/dev/null || true
           git rm -rf --cached "programs/*/Cargo.lock" 2>/dev/null || true
+          rm -f Cargo.lock
+          rm -f programs/*/Cargo.lock
           find . -name "Cargo.lock" -type f -delete
           
-          # Показать что осталось (должно быть пусто)
+          # Verify removal
           echo "=== Checking for remaining Lock files ==="
           find . -name "Cargo.lock" -type f || echo "No Cargo.lock found - OK"
           
@@ -56,9 +60,22 @@ jobs:
           mkdir -p ~/.config/solana
           solana-keygen new --no-bip39-passphrase -o ~/.config/solana/id.json || true
           
-          # Build (создаст НОВЫЙ Lock v4 с правильным Cargo)
+          # КРИТИЧНО: Заменить системный Cargo на новый
+          echo "=== Replacing system Cargo with new version ==="
+          sudo mv /usr/bin/cargo /usr/bin/cargo.old || true
+          sudo mv /usr/bin/rustc /usr/bin/rustc.old || true
+          sudo ln -sf $HOME/.cargo/bin/cargo /usr/bin/cargo
+          sudo ln -sf $HOME/.cargo/bin/rustc /usr/bin/rustc
+          
+          # Verify replacement
+          echo "System cargo version: $(cargo --version)"
+          echo "System rustc version: $(rustc --version)"
+          
+          # Build с правильным Cargo
           echo "=== Starting Anchor Build ==="
           export RUSTC_BOOTSTRAP=1
+          
+          # Запускаем anchor с явным указанием Cargo
           anchor build
           
           echo "=== Build Complete ==="
