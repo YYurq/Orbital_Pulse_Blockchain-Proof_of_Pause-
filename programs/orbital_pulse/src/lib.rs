@@ -1,8 +1,6 @@
 use anchor_lang::prelude::*;
-use anchor_spl::{
-    associated_token::AssociatedToken,
-    token::{Mint, MintTo, Token, TokenAccount},
-};
+use anchor_spl::token::{self, Mint, MintTo, Token, TokenAccount};
+use anchor_spl::associated_token::AssociatedToken;
 use anchor_lang::solana_program::hash::hashv;
 use anchor_lang::solana_program::sysvar::slot_hashes;
 
@@ -35,6 +33,7 @@ pub mod orbital_pulse {
     pub fn try_transition(ctx: Context<Transition>) -> Result<()> {
         let state = &mut ctx.accounts.state;
         
+        // Чтение энтропии
         let data = ctx.accounts.slot_hashes.try_borrow_data()?;
         let hash: [u8; 32] = data[12..44].try_into().map_err(|_| ErrorCode::HashNotFound)?;
         let n_hash = hashv(&[&hash, &state.authority.to_bytes()]);
@@ -56,6 +55,7 @@ pub mod orbital_pulse {
             return Ok(());
         }
 
+        // Цикл обновления истории
         let h_idx = state.head as usize;
         state.history[h_idx] = delta;
         state.head = (state.head + 1) % 16;
@@ -67,6 +67,7 @@ pub mod orbital_pulse {
             sum += state.history[(c_h + 16 - 1 - i) % 16] as u128;
         }
         let avg = sum / d_v;
+        
         let mut v_sum: u128 = 0;
         for i in 0..state.current_depth as usize {
             let val = state.history[(c_h + 16 - 1 - i) % 16] as u128;
@@ -83,17 +84,18 @@ pub mod orbital_pulse {
         state.variance_index = (state.variance_index.saturating_mul(4).saturating_add(f_log)) / 5;
 
         let x_max = state.variance_index.max(state.epsilon);
+        let x_step = x_max / 10;
         let grad = state.variance_index as i64 - state.prev_variance_index as i64;
         let thr = state.variance_index.saturating_mul(state.gradient_threshold_percent) / 100;
         let phi_crit = state.epsilon.saturating_mul(2);
 
         match state.mode {
-            0 => if state.variance_index > phi_crit { state.mode = 2; state.x_control = x_max / 10; },
+            0 => if state.variance_index > phi_crit { state.mode = 2; state.x_control = x_step; },
             2 => {
                 if state.variance_index < state.epsilon && grad.abs() < (thr as i64) {
                     state.mode = 0; state.x_control = 0;
                 } else {
-                    state.x_control = state.x_control.saturating_add(x_max / 10).min(x_max);
+                    state.x_control = state.x_control.saturating_add(x_step).min(x_max);
                     if state.x_control >= (x_max * 9 / 10) { state.mode = 1; }
                 }
             },
@@ -108,11 +110,13 @@ pub mod orbital_pulse {
             _ => state.mode = 0,
         }
 
+        // Резонанс (минтинг)
         if state.mode == 0 && delta < state.epsilon {
-            // Исправленный доступ к бампам через автоматическую структуру
+            let mint_key = ctx.accounts.mint.key();
             let seeds = &[b"orbital-genesis".as_ref(), &[ctx.bumps.mint]];
             let signer = &[&seeds[..]];
-            anchor_spl::token::mint_to(
+            
+            token::mint_to(
                 CpiContext::new_with_signer(
                     ctx.accounts.token_program.to_account_info(),
                     MintTo {
@@ -131,7 +135,9 @@ pub mod orbital_pulse {
     }
 }
 
+// ДОБАВЛЕНЫ МАКРОСЫ Serialize/Deserialize/Copy для стабильности размера
 #[account]
+#[derive(Default)]
 pub struct PulseState {
     pub authority: Pubkey,
     pub last_noise: u64,
@@ -156,7 +162,6 @@ impl PulseState {
 pub struct Initialize<'info> {
     #[account(init, payer = signer, space = PulseState::LEN)]
     pub state: Account<'info, PulseState>,
-    
     #[account(
         init_if_needed,
         payer = signer,
@@ -166,7 +171,6 @@ pub struct Initialize<'info> {
         bump
     )]
     pub mint: Account<'info, Mint>,
-    
     #[account(
         init_if_needed,
         payer = signer,
@@ -174,10 +178,8 @@ pub struct Initialize<'info> {
         associated_token::authority = signer,
     )]
     pub token_account: Account<'info, TokenAccount>,
-    
     #[account(mut)]
     pub signer: Signer<'info>,
-    
     pub system_program: Program<'info, System>,
     pub token_program: Program<'info, Token>,
     pub associated_token_program: Program<'info, AssociatedToken>,
