@@ -1,5 +1,5 @@
 use anchor_lang::prelude::*;
-use anchor_spl::token::{self, Mint, MintTo, Token, TokenAccount};
+use anchor_spl::token::{Mint, MintTo, Token, TokenAccount};
 use anchor_spl::associated_token::AssociatedToken;
 use anchor_lang::solana_program::hash::hashv;
 use anchor_lang::solana_program::sysvar::slot_hashes;
@@ -32,6 +32,7 @@ pub mod orbital_pulse {
 
     pub fn try_transition(ctx: Context<Transition>) -> Result<()> {
         let state = &mut ctx.accounts.state;
+        
         let data = ctx.accounts.slot_hashes.try_borrow_data()?;
         let hash: [u8; 32] = data[12..44].try_into().map_err(|_| ErrorCode::HashNotFound)?;
         let n_hash = hashv(&[&hash, &state.authority.to_bytes()]);
@@ -80,18 +81,17 @@ pub mod orbital_pulse {
         state.variance_index = (state.variance_index.saturating_mul(4).saturating_add(f_log)) / 5;
 
         let x_max = state.variance_index.max(state.epsilon);
-        let x_step = x_max / 10;
         let grad = state.variance_index as i64 - state.prev_variance_index as i64;
         let thr = state.variance_index.saturating_mul(state.gradient_threshold_percent) / 100;
         let phi_crit = state.epsilon.saturating_mul(2);
 
         match state.mode {
-            0 => if state.variance_index > phi_crit { state.mode = 2; state.x_control = x_step; },
+            0 => if state.variance_index > phi_crit { state.mode = 2; state.x_control = x_max / 10; },
             2 => {
                 if state.variance_index < state.epsilon && grad.abs() < (thr as i64) {
                     state.mode = 0; state.x_control = 0;
                 } else {
-                    state.x_control = state.x_control.saturating_add(x_step).min(x_max);
+                    state.x_control = state.x_control.saturating_add(x_max / 10).min(x_max);
                     if state.x_control >= (x_max * 9 / 10) { state.mode = 1; }
                 }
             },
@@ -103,16 +103,20 @@ pub mod orbital_pulse {
                     state.mode = 2; state.x_control = x_max / 2;
                 }
             },
-            _ => state.mode = 2,
+            _ => state.mode = 0,
         }
 
         if state.mode == 0 && delta < state.epsilon {
-            let seeds = &[b"orbital-genesis".as_ref(), &[ctx.bumps.mint]];
-            token::mint_to(CpiContext::new_with_signer(ctx.accounts.token_program.to_account_info(), MintTo {
+            let bump = ctx.bumps.mint; // Используем bump напрямую из контекста
+            let seeds = &[b"orbital-genesis".as_ref(), &[bump]];
+            let signer = &[&seeds[..]];
+            let cpi_accounts = MintTo {
                 mint: ctx.accounts.mint.to_account_info(),
                 to: ctx.accounts.token_account.to_account_info(),
                 authority: ctx.accounts.mint.to_account_info(),
-            }, &[&seeds[..]]), 100_000_000)?;
+            };
+            let cpi_ctx = CpiContext::new_with_signer(ctx.accounts.token_program.to_account_info(), cpi_accounts, signer);
+            anchor_spl::token::mint_to(cpi_ctx, 100_000_000)?;
         }
 
         state.last_noise = noise;
@@ -122,36 +126,72 @@ pub mod orbital_pulse {
 
 #[account]
 pub struct PulseState {
-    pub authority: Pubkey, pub last_noise: u64, pub epsilon: u64,
-    pub history: [u64; 16], pub current_depth: u8, pub head: u8,                 
-    pub variance_index: u64, pub prev_variance_index: u64,
-    pub gradient_threshold_percent: u64, pub x_control: u64, 
-    pub mode: u8, pub calib_count: u8, pub is_born: bool,
+    pub authority: Pubkey,
+    pub last_noise: u64,
+    pub epsilon: u64,
+    pub history: [u64; 16],
+    pub current_depth: u8,
+    pub head: u8,
+    pub variance_index: u64,
+    pub prev_variance_index: u64,
+    pub gradient_threshold_percent: u64,
+    pub x_control: u64,
+    pub mode: u8,
+    pub calib_count: u8,
+    pub is_born: bool,
 }
 
-impl PulseState { pub const LEN: usize = 8 + 32 + 8 + 8 + 128 + 1 + 1 + 8 + 8 + 8 + 8 + 1 + 1 + 1; }
+impl PulseState {
+    pub const LEN: usize = 8 + 32 + 8 + 8 + (16 * 8) + 1 + 1 + 8 + 8 + 8 + 8 + 1 + 1 + 1;
+}
 
 #[derive(Accounts)]
 pub struct Initialize<'info> {
-    #[account(init, payer = signer, space = PulseState::LEN)] pub state: Account<'info, PulseState>,
-    #[account(init_if_needed, payer = signer, mint::decimals = 9, mint::authority = mint, seeds = [b"orbital-genesis"], bump)] pub mint: Account<'info, Mint>,
-    #[account(init_if_needed, payer = signer, associated_token::mint = mint, associated_token::authority = signer)] pub token_account: Account<'info, TokenAccount>,
-    #[account(mut)] pub signer: Signer<'info>, 
+    #[account(init, payer = signer, space = PulseState::LEN)]
+    pub state: Account<'info, PulseState>,
+    #[account(
+        init_if_needed,
+        payer = signer,
+        mint::decimals = 9,
+        mint::authority = mint,
+        seeds = [b"orbital-genesis"],
+        bump
+    )]
+    pub mint: Account<'info, Mint>,
+    #[account(
+        init_if_needed,
+        payer = signer,
+        associated_token::mint = mint,
+        associated_token::authority = signer,
+    )]
+    pub token_account: Account<'info, TokenAccount>,
+    #[account(mut)]
+    pub signer: Signer<'info>,
     pub system_program: Program<'info, System>,
-    pub token_program: Program<'info, Token>, 
+    pub token_program: Program<'info, Token>,
     pub associated_token_program: Program<'info, AssociatedToken>,
     pub rent: Sysvar<'info, Rent>,
 }
 
 #[derive(Accounts)]
 pub struct Transition<'info> {
-    #[account(mut)] pub state: Account<'info, PulseState>,
-    #[account(mut, seeds = [b"orbital-genesis"], bump)] pub mint: Account<'info, Mint>,
-    #[account(mut)] pub token_account: Account<'info, TokenAccount>,
-    #[account(address = slot_hashes::ID)] pub slot_hashes: AccountInfo<'info>,
-    #[account(mut)] pub signer: Signer<'info>, 
+    #[account(mut)]
+    pub state: Account<'info, PulseState>,
+    #[account(mut, seeds = [b"orbital-genesis"], bump)]
+    pub mint: Account<'info, Mint>,
+    #[account(mut)]
+    pub token_account: Account<'info, TokenAccount>,
+    #[account(address = slot_hashes::ID)]
+    pub slot_hashes: AccountInfo<'info>,
+    #[account(mut)]
+    pub signer: Signer<'info>,
     pub token_program: Program<'info, Token>,
 }
 
 #[error_code]
-pub enum ErrorCode { #[msg("Hash Not Found")] HashNotFound, #[msg("Invalid Depth")] InvalidDepth }
+pub enum ErrorCode {
+    #[msg("Hash Not Found")]
+    HashNotFound,
+    #[msg("Invalid Depth")]
+    InvalidDepth,
+}
