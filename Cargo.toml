@@ -3,6 +3,4 @@ members = ["programs/*"]
 resolver = "2"
 
 [patch.crates-io]
-# Мы просто объявляем, что хотим использовать эти версии из общего реестра
-# без привязки к гит-репозиториям
 solana-program = { git = "https://github.com/solana-labs/solana", tag = "v1.17.0" }
