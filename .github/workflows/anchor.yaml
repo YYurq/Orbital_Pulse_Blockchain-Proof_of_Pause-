@@ -16,66 +16,46 @@ jobs:
         run: |
           set -e
           
-          # System dependencies
           echo "=== Installing System Dependencies ==="
           sudo apt-get update
           sudo apt-get install -y pkg-config build-essential libudev-dev libssl-dev
           
-          # Install LATEST Rust
           echo "=== Installing Latest Rust Nightly ==="
           curl --proto '=https' --tlsv1.2 -sSf https://sh.rustup.rs | sh -s -- -y --default-toolchain nightly
           source $HOME/.cargo/env
           rustup component add rustfmt clippy
           
-          # КРИТИЧНО: Показать версии
           echo "=== Rust Version ==="
-          echo "rustc: $(rustc --version)"
-          echo "cargo: $(cargo --version)"
-          echo "cargo path: $(which cargo)"
+          rustc --version
+          cargo --version
           
-          # Install Solana
           echo "=== Installing Solana ==="
           wget -q https://github.com/solana-labs/solana/releases/download/v1.17.0/solana-release-x86_64-unknown-linux-gnu.tar.bz2
           tar jxf solana-release-x86_64-unknown-linux-gnu.tar.bz2
           export PATH="$GITHUB_WORKSPACE/solana-release/bin:$PATH"
           
-          # Install Anchor
           echo "=== Installing Anchor CLI ==="
           npm install -g @coral-xyz/anchor-cli@0.29.0
           
-          # Force remove Lock
-          echo "=== Force removing ALL Cargo.lock files ==="
-          git rm -rf --cached Cargo.lock 2>/dev/null || true
-          git rm -rf --cached "programs/*/Cargo.lock" 2>/dev/null || true
+          echo "=== CRITICAL: Force regenerate Cargo.lock with NEW Cargo ==="
+          # Удаляем все Lock везде
           rm -f Cargo.lock
           rm -f programs/*/Cargo.lock
           find . -name "Cargo.lock" -type f -delete
           
-          # Verify removal
-          echo "=== Checking for remaining Lock files ==="
-          find . -name "Cargo.lock" -type f || echo "No Cargo.lock found - OK"
+          # Генерируем новый Lock v4 с Cargo 1.95
+          cargo generate-lockfile
           
-          # Setup Solana key
+          # Проверяем версию Lock
+          echo "Generated Cargo.lock version:"
+          head -1 Cargo.lock
+          
           echo "=== Setting up Solana keypair ==="
           mkdir -p ~/.config/solana
           solana-keygen new --no-bip39-passphrase -o ~/.config/solana/id.json || true
           
-          # КРИТИЧНО: Заменить системный Cargo на новый
-          echo "=== Replacing system Cargo with new version ==="
-          sudo mv /usr/bin/cargo /usr/bin/cargo.old || true
-          sudo mv /usr/bin/rustc /usr/bin/rustc.old || true
-          sudo ln -sf $HOME/.cargo/bin/cargo /usr/bin/cargo
-          sudo ln -sf $HOME/.cargo/bin/rustc /usr/bin/rustc
-          
-          # Verify replacement
-          echo "System cargo version: $(cargo --version)"
-          echo "System rustc version: $(rustc --version)"
-          
-          # Build с правильным Cargo
           echo "=== Starting Anchor Build ==="
           export RUSTC_BOOTSTRAP=1
-          
-          # Запускаем anchor с явным указанием Cargo
           anchor build
           
           echo "=== Build Complete ==="
