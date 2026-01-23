@@ -11,11 +11,18 @@ orbital_pulse = "3o6We5WQoGDM6wpQMPq5VE3fjvC7zgCUD56X12vLn917"
 orbital_pulse = "3o6We5WQoGDM6wpQMPq5VE3fjvC7zgCUD56X12vLn917"
 
 [registry]
-url = "https://api.apr.dev"
+url = "https://anchor.projectserum.com"
 
 [provider]
-cluster = "devnet"
+cluster = "Localnet"
 wallet = "~/.config/solana/id.json"
 
 [scripts]
-test = "yarn run ts-mocha -p ./tsconfig.json -t 1000000 tests/**/*.ts"
+test = "yarn run ts-mocha -p ./tsconfig.json -t 120000 tests/**/*.ts"
+
+[test]
+[test.validator]
+url = "https://api.mainnet-beta.solana.com"
+
+[[test.validator.clone]]
+address = "SysvarS1otHashes111111111111111111111111111"
