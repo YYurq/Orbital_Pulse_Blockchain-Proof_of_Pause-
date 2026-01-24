@@ -1,7 +1,3 @@
-
-
-РАБОЧИЙ .yaml
-
 name: Anchor Build & Check
 
 on:
@@ -13,13 +9,14 @@ on:
 jobs:
   build:
     runs-on: ubuntu-latest
+    
     steps:
       - name: Checkout code
         uses: actions/checkout@v4
-
+      
       - name: Install Rust
         uses: dtolnay/rust-toolchain@stable
-
+      
       - name: Build Program
         run: |
           sh -c "$(curl -sSfL --retry 5 --connect-timeout 30 https://release.anza.xyz/v1.18.18/install)"
@@ -38,7 +35,7 @@ jobs:
           sed -i 's/version = 4/version = 3/g' Cargo.lock
           
           anchor build
-
+      
       - name: Upload Artifacts
         if: success()
         uses: actions/upload-artifact@v4
