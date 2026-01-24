@@ -5,6 +5,6 @@ resolver = "2"
 [patch.crates-io]
 constant_time_eq = { path = "./fix/constant_time_eq" }
 indexmap = { path = "./fix/indexmap" }
-toml_datetime = { path = "./fix/toml_datetime" }
 toml_edit = { path = "./fix/toml_edit" }
+toml_datetime = { path = "./fix/toml_datetime" }
 toml_parser = { path = "./fix/toml_parser" }
