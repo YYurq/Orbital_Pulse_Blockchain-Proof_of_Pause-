@@ -13,36 +13,39 @@ jobs:
       - name: Checkout Code
         uses: actions/checkout@v3
 
-      - name: Hard Clean
+      - name: Install System Deps
         run: |
-          rm -f Cargo.lock
-          find . -name "Cargo.lock" -type f -delete
+          sudo apt-get update
+          sudo apt-get install -y pkg-config build-essential libudev-dev libssl-dev
 
-      - name: Setup environment
+      - name: Install Rust
+        uses: dtolnay/rust-toolchain@stable
+        with:
+          toolchain: 1.75.0
+
+      - name: Install Solana
         run: |
-          sudo apt-get update && sudo apt-get install -y pkg-config build-essential libudev-dev libssl-dev
-          
-          # Установка Rust
-          curl --proto '=https' --tlsv1.2 -sSf https://sh.rustup.rs | sh -s -- -y
-          source $HOME/.cargo/env
-          rustup default 1.75.0  # Ставим версию, которая понимает Lock v4, но не слишком новую
-          
-          # Установка Solana
-          sh -c "$(curl -sSfL https://release.solana.com/v1.17.0/install)"
-          echo "$HOME/.local/share/solana/install/active_release/bin" >> $GITHUB_PATH
-          
-          # Установка Anchor
-          npm install -g @coral-xyz/anchor-cli@0.29.0
+          wget -q https://github.com/solana-labs/solana/releases/download/v1.17.0/solana-release-x86_64-unknown-linux-gnu.tar.bz2
+          tar jxf solana-release-x86_64-unknown-linux-gnu.tar.bz2
+          echo "$GITHUB_WORKSPACE/solana-release/bin" >> $GITHUB_PATH
+
+      - name: Install Anchor
+        run: npm install -g @coral-xyz/anchor-cli@0.28.0
 
       - name: Build
         run: |
-          export PATH="$HOME/.local/share/solana/install/active_release/bin:$PATH"
+          export PATH="$GITHUB_WORKSPACE/solana-release/bin:$PATH"
           
-          # Генерируем лок один раз
+          mkdir -p ~/.config/solana
+          solana-keygen new --no-bip39-passphrase -o ~/.config/solana/id.json || echo "exists"
+          
+          # Генерируем лок
           cargo generate-lockfile
           
-          # Принудительно правим формат, чтобы старый компилятор Solana не ругался
+          # Единственный важный фикс для Rust 1.75
+          cargo update -p borsh --precise 0.10.3 || echo "skip"
+          
+          # Хак формата
           sed -i 's/version = 4/version = 3/g' Cargo.lock
           
-          # Финальный билд
           anchor build
