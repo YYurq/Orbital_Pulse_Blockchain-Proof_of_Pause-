@@ -12,8 +12,33 @@ jobs:
     steps:
       - name: Checkout Code
         uses: actions/checkout@v3
-        with:
-          fetch-depth: 0 # Качаем всю историю Git, чтобы точно найти все ревизии
+
+      - name: Create Local Fix
+        run: |
+          # 1. Создаем структуру папок для локального патча
+          mkdir -p fix/constant_time_eq/src
+          
+          # 2. Пишем Cargo.toml, который прикидывается версией 0.4.2 (чтобы blake3 был доволен),
+          # но использует стабильный edition 2021.
+          cat > fix/constant_time_eq/Cargo.toml <<EOF
+          [package]
+          name = "constant_time_eq"
+          version = "0.4.2"
+          edition = "2021"
+          EOF
+          
+          # 3. Пишем минимальный код библиотеки, чтобы всё скомпилировалось
+          cat > fix/constant_time_eq/src/lib.rs <<EOF
+          #[inline(never)]
+          pub fn constant_time_eq(a: &[u8], b: &[u8]) -> bool {
+              if a.len() != b.len() { return false; }
+              let mut res = 0;
+              for i in 0..a.len() {
+                  res |= a[i] ^ b[i];
+              }
+              res == 0
+          }
+          EOF
 
       - name: Install System Deps
         run: |
@@ -33,17 +58,15 @@ jobs:
         run: |
           export PATH="$GITHUB_WORKSPACE/solana-release/bin:$PATH"
           
-          # Ключ
+          # Настройка ключа
           mkdir -p ~/.config/solana
           solana-keygen new --no-bip39-passphrase -o ~/.config/solana/id.json || echo "exists"
           
-          # Очистка и создание нового лок-файла
+          # Удаляем старые локи и собираем
           rm -f Cargo.lock
-          cargo generate-lockfile
           
-          # ФИКС: Откатываем blake3, чтобы он не конфликтовал с нашим патчем
-          # Используем полную спецификацию, чтобы избежать ошибки "ambiguous"
-          cargo update -p blake3 --precise 1.5.0 || echo "blake3 fix skipped"
+          # Генерируем лок. Cargo увидит наш локальный патч и не пойдет в интернет.
+          cargo generate-lockfile
           
           # Хак формата для Solana 1.18
           sed -i 's/version = 4/version = 3/g' Cargo.lock
