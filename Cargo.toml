@@ -1,3 +1,8 @@
 [workspace]
 members = ["programs/*"]
 resolver = "2"
+
+[patch.crates-io]
+# Мы насильно заставляем проект использовать старую версию 0.3.1, 
+# которая НЕ требует Rust 2024 и стабильно работает.
+constant_time_eq = { git = "https://github.com/cesarb/constant_time_eq", tag = "v0.3.1" }
