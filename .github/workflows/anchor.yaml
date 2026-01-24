@@ -20,7 +20,7 @@ jobs:
 
       - name: Install Solana
         run: |
-          # Прямая установка конкретной стабильной версии
+          # Используем проверенный метод скачивания
           wget -q https://github.com/solana-labs/solana/releases/download/v1.18.12/solana-release-x86_64-unknown-linux-gnu.tar.bz2
           tar jxf solana-release-x86_64-unknown-linux-gnu.tar.bz2
           echo "$GITHUB_WORKSPACE/solana-release/bin" >> $GITHUB_PATH
@@ -30,22 +30,22 @@ jobs:
 
       - name: Build and Patch
         run: |
-          # Принудительно задаем PATH для текущей оболочки
           export PATH="$GITHUB_WORKSPACE/solana-release/bin:$PATH"
           
-          # Настройка ключа
+          # 1. Создаем ключ
           mkdir -p ~/.config/solana
           solana-keygen new --no-bip39-passphrase -o ~/.config/solana/id.json || echo "exists"
           
-          # Генерация Lock-файла
+          # 2. Генерируем Lock-файл
           cargo generate-lockfile
           
-          # Усмиряем borsh всех версий, которые выше 1.5.1
-          cargo update -p borsh@1.5.7 --precise 1.5.1 || echo "no 1.5.7 found"
-          cargo update -p borsh-derive@1.5.7 --precise 1.5.1 || echo "no 1.5.7-derive found"
+          # 3. ФИКС БОРША БЕЗ GIT (используем реестр crates.io)
+          # Мы берем те версии, которые точно есть в реестре и не требуют Rust 1.77
+          cargo update -p borsh@1.5.7 --precise 1.5.1 || echo "not found"
+          cargo update -p borsh-derive@1.5.7 --precise 1.5.1 || echo "not found"
           
-          # Исправляем формат Lock-файла (v4 -> v3)
+          # 4. Хак формата Lock-файла для инструментов Solana
           sed -i 's/version = 4/version = 3/g' Cargo.lock
           
-          # Запуск сборки
-          anchor build
+          # 5. Сборка (используем --offline, чтобы Cargo не вздумал опять всё обновить)
+          anchor build -- --offline || anchor build
