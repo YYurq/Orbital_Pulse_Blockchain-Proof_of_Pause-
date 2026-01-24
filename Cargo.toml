@@ -3,5 +3,5 @@ members = ["programs/*"]
 resolver = "2"
 
 [patch.crates-io]
-# Используем Git как альтернативный источник, чтобы обойти ошибку "same source"
-constant_time_eq = { git = "https://github.com/cesarb/constant_time_eq", rev = "ac26804" }
+# Полный SHA-1 хэш версии 0.3.1. Теперь Гитхаб его точно увидит.
+constant_time_eq = { git = "https://github.com/cesarb/constant_time_eq", rev = "ac268045657df669e46a9e32e8b23c93f0b22a01" }
