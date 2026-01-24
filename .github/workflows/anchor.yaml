@@ -31,24 +31,29 @@ jobs:
         uses: actions/cache@v4
         with:
           path: ~/.cargo/registry
-          key: ${{ runner.os }}-cargo-registry-${{ hashFiles('**/Cargo.lock') }}
+          key: ${{ runner.os }}-cargo-registry-nightly-${{ hashFiles('**/Cargo.lock') }}
           
       - name: Cache Cargo index
         uses: actions/cache@v4
         with:
           path: ~/.cargo/git
-          key: ${{ runner.os }}-cargo-index-${{ hashFiles('**/Cargo.lock') }}
+          key: ${{ runner.os }}-cargo-index-nightly-${{ hashFiles('**/Cargo.lock') }}
           
       - name: Cache target directory
         uses: actions/cache@v4
         with:
           path: ./target
-          key: ${{ runner.os }}-target-${{ hashFiles('**/Cargo.lock') }}
+          key: ${{ runner.os }}-target-nightly-${{ hashFiles('**/Cargo.lock') }}
 
       - name: Install Rust
         uses: dtolnay/rust-toolchain@nightly
         with:
           components: rustfmt, clippy
+
+      - name: Clear cargo cache
+        run: |
+          rm -rf ~/.cargo/registry
+          rm -rf ~/.cargo/git
 
       - name: Install Solana
         run: |
