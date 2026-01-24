@@ -76,7 +76,9 @@ jobs:
           cargo --version
 
       - name: Build program
-        run: anchor build
+        run: |
+          rm -f Cargo.lock
+          anchor build
 
       - name: Run Cargo tests
         run: cargo test --manifest-path programs/orbital_pulse/Cargo.toml
