@@ -9,13 +9,14 @@ on:
 jobs:
   build:
     runs-on: ubuntu-latest
+    
     steps:
       - name: Checkout code
         uses: actions/checkout@v4
-
+      
       - name: Install Rust
         uses: dtolnay/rust-toolchain@stable
-
+      
       - name: Build Program
         run: |
           # 1. Установка Solana
@@ -38,7 +39,7 @@ jobs:
           cargo update -p indexmap --precise 2.2.6
           
           # Стандартные фиксы для Rust 1.75
-          cargo update -p blake3 --precise 1.5.0
+          cargo update -p blake3 --precise 1.5.1
           cargo update -p ahash@0.8.12 --precise 0.8.6
           cargo update -p borsh@1.6.0 --precise 1.5.1 || echo "Borsh ok"
           
@@ -47,7 +48,7 @@ jobs:
           
           # 5. СБОРКА
           anchor build
-
+      
       - name: Upload Artifacts
         if: success()
         uses: actions/upload-artifact@v4
