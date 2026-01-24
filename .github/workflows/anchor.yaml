@@ -31,22 +31,20 @@ jobs:
         run: |
           export PATH="$GITHUB_WORKSPACE/solana-release/bin:$PATH"
           
-          # Ключ
+          # Настройка ключа
           mkdir -p ~/.config/solana
           solana-keygen new --no-bip39-passphrase -o ~/.config/solana/id.json || echo "exists"
           
-          # Очистка локов и временных файлов
+          # Очистка и генерация
           rm -f Cargo.lock
-          
-          # Генерируем новый лок
           cargo generate-lockfile
           
-          # ПРИНУДИТЕЛЬНО понижаем версию в лок-файле без использования [patch]
-          # Это обходит ограничение "same source"
-          cargo update -p constant_time_eq --precise 0.3.1
+          # РЕШЕНИЕ ОШИБКИ AMBIGUOUS:
+          # Мы явно указываем, что хотим откатить версию 0.4.2 до 0.3.1
+          cargo update -p constant_time_eq@0.4.2 --precise 0.3.1
           
-          # Хак формата (v4 -> v3)
+          # Хак формата Lock-файла для инструментов Solana (v4 -> v3)
           sed -i 's/version = 4/version = 3/g' Cargo.lock
           
-          # Сборка
+          # Финальная попытка сборки
           anchor build -- --offline
