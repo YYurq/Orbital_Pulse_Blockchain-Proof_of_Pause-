@@ -1,34 +1,40 @@
-name: Code Integrity Check
+name: Anchor Build & Check
 
 on:
   push:
-    branches: [ main ]
+    branches: [ main, develop ]
   pull_request:
-    branches: [ main ]
+    branches: [ main, develop ]
 
 jobs:
-  check-rust:
+  build:
     runs-on: ubuntu-latest
     steps:
-    - uses: actions/checkout@v3
-    - name: Install Rust
-      uses: actions-rs/toolchain@v1
-      with:
-        toolchain: stable
-        override: true
-    - name: Run Cargo Check
-      run: cargo check # Проверяет синтаксис Rust. Быстро и надежно.
+      - uses: actions/checkout@v4
 
-  check-typescript:
-    runs-on: ubuntu-latest
-    steps:
-    - uses: actions/checkout@v3
-    - name: Install Node.js
-      uses: actions/setup-node@v3
-      with:
-        node-version: 18
-    - run: npm install -g typescript
-    - name: TS Compile Check
-      run: |
-        # Мы просто проверяем, что в тестах нет синтаксических ошибок
-        cd tests && npx tsc --noEmit || true
+      - name: Install Rust
+        uses: dtolnay/rust-toolchain@stable
+
+      - name: Build Program
+        run: |
+          # 1. Установка Solana CLI
+          sh -c "$(curl -sSfL https://release.solana.com/v1.18.18/install)"
+          
+          # 2. Настройка путей (Экспорт прямо в текущую сессию)
+          export PATH="$HOME/.local/share/solana/install/active_release/bin:$PATH"
+          
+          # 3. Установка Anchor
+          npm install -g @coral-xyz/anchor-cli@0.30.1
+          
+          # 4. Тот самый фикс зависимостей, который сработал!
+          cargo generate-lockfile
+          cargo update -p blake3 --precise 1.5.0
+          
+          # 5. Сборка
+          anchor build
+
+      - name: Upload Artifacts
+        uses: actions/upload-artifact@v4
+        with:
+          name: program-so
+          path: target/deploy/*.so
