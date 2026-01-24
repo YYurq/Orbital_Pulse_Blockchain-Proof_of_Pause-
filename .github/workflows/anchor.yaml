@@ -46,8 +46,8 @@ jobs:
           # 4. ФИКС ВЕРСИИ ЛОК-ФАЙЛА
           sed -i 's/version = 4/version = 3/g' Cargo.lock
           
-          # 5. СБОРКА
-          anchor build
+          # 5. СБОРКА БЕЗ IDL
+          anchor build --no-idl
       
       - name: Upload Artifacts
         if: success()
