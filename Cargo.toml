@@ -3,12 +3,5 @@ members = ["programs/*"]
 resolver = "2"
 
 [patch.crates-io]
-# Принудительно связываем все части Solana в один узел версии 1.17.0
+# Это единственный патч, который нам реально нужен
 solana-program = { git = "https://github.com/solana-labs/solana", tag = "v1.17.0" }
-solana-pubkey = { git = "https://github.com/solana-labs/solana", tag = "v1.17.0" }
-solana-frozen-abi = { git = "https://github.com/solana-labs/solana", tag = "v1.17.0" }
-solana-frozen-abi-macro = { git = "https://github.com/solana-labs/solana", tag = "v1.17.0" }
-
-# Оставляем наши старые фиксы для Rust 1.68
-borsh = { git = "https://github.com/near/borsh-rs", rev = "cd83842" }
-borsh-derive = { git = "https://github.com/near/borsh-rs", rev = "cd83842" }
