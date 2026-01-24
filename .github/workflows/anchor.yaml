@@ -13,35 +13,39 @@ jobs:
       - name: Checkout Code
         uses: actions/checkout@v3
 
-      - name: Setup Solana
+      - name: Install System Deps
         run: |
-          # Устанавливаем Solana в конкретную папку
-          sh -c "$(curl -sSfL https://release.solana.com/v1.18.12/install)"
-          # Явно добавляем в PATH для всех последующих шагов
-          echo "$HOME/.local/share/solana/install/active_release/bin" >> $GITHUB_PATH
+          sudo apt-get update
+          sudo apt-get install -y pkg-config build-essential libudev-dev libssl-dev
+
+      - name: Install Solana
+        run: |
+          # Прямая установка конкретной стабильной версии
+          wget -q https://github.com/solana-labs/solana/releases/download/v1.18.12/solana-release-x86_64-unknown-linux-gnu.tar.bz2
+          tar jxf solana-release-x86_64-unknown-linux-gnu.tar.bz2
+          echo "$GITHUB_WORKSPACE/solana-release/bin" >> $GITHUB_PATH
 
       - name: Install Anchor
         run: npm install -g @coral-xyz/anchor-cli@0.29.0
 
-      - name: Build and Fix
+      - name: Build and Patch
         run: |
-          # Добавляем путь вручную для надежности в этом шаге
-          export PATH="$HOME/.local/share/solana/install/active_release/bin:$PATH"
+          # Принудительно задаем PATH для текущей оболочки
+          export PATH="$GITHUB_WORKSPACE/solana-release/bin:$PATH"
           
-          # Ключ
+          # Настройка ключа
           mkdir -p ~/.config/solana
           solana-keygen new --no-bip39-passphrase -o ~/.config/solana/id.json || echo "exists"
           
-          # Генерируем Lock
+          # Генерация Lock-файла
           cargo generate-lockfile
           
-          # РЕШАЕМ ПРОБЛЕМУ AMBIGUOUS: указываем ПОЛНУЮ спецификацию версии 1.6.0
-          # Именно она требует Rust 1.77, поэтому мы ее ПРИНУДИТЕЛЬНО понижаем
-          cargo update -p borsh@1.6.0 --precise 1.5.1 || echo "borsh 1.6 fix skipped"
-          cargo update -p borsh-derive@1.6.0 --precise 1.5.1 || echo "borsh-derive 1.6 fix skipped"
+          # Усмиряем borsh всех версий, которые выше 1.5.1
+          cargo update -p borsh@1.5.7 --precise 1.5.1 || echo "no 1.5.7 found"
+          cargo update -p borsh-derive@1.5.7 --precise 1.5.1 || echo "no 1.5.7-derive found"
           
-          # Фикс для старых компиляторов внутри Solana
+          # Исправляем формат Lock-файла (v4 -> v3)
           sed -i 's/version = 4/version = 3/g' Cargo.lock
           
-          # Запуск
+          # Запуск сборки
           anchor build
