@@ -25,20 +25,20 @@ jobs:
           # 2. Установка Anchor
           npm install -g @coral-xyz/anchor-cli@0.30.1
           
-          # 3. ТОЧНЫЙ ФИКС ЗАВИСИМОСТЕЙ
+          # 3. ТОЧНЫЙ ФИКС ЗАВИСИМОСТЕЙ (Финальная калибровка)
           cargo generate-lockfile
           
-          # Укрощаем цепочку proc-macro-crate и toml_edit строго под требования друг друга
+          # Стыкуем версии, которые запросил компилятор в логе
           cargo update -p proc-macro-crate@3.4.0 --precise 3.1.0
           cargo update -p toml_edit --precise 0.21.0
-          cargo update -p toml_datetime --precise 0.6.3
+          cargo update -p toml_datetime --precise 0.6.5
           
-          # Остальные обязательные откаты для Rust 1.75
+          # Стандартные фиксы для совместимости с Rust 1.75
           cargo update -p blake3 --precise 1.5.0
           cargo update -p ahash@0.8.12 --precise 0.8.6
           cargo update -p borsh@1.6.0 --precise 1.5.1 || echo "Borsh already ok"
           
-          # 4. ФИКС ВЕРСИИ ЛОК-ФАЙЛА
+          # 4. ФИКС ВЕРСИИ ЛОК-ФАЙЛА (Важно для Solana 1.18)
           sed -i 's/version = 4/version = 3/g' Cargo.lock
           
           # 5. СБОРКА
