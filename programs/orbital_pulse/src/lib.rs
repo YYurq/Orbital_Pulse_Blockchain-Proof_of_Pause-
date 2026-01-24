@@ -1,6 +1,6 @@
 use anchor_lang::prelude::*;
 use anchor_spl::token::{self, Mint, MintTo, Token, TokenAccount};
-use anchor_spl::associated_token::AssociatedToken; // Явный импорт
+use anchor_spl::associated_token::AssociatedToken;
 use anchor_lang::solana_program::hash::hashv;
 use anchor_lang::solana_program::sysvar::slot_hashes;
 
@@ -134,13 +134,13 @@ impl PulseState { pub const LEN: usize = 8 + 32 + 8 + 8 + 128 + 1 + 1 + 8 + 8 + 
 #[derive(Accounts)]
 pub struct Initialize<'info> {
     #[account(init, payer = signer, space = PulseState::LEN)] 
-    pub state: Account<'info, PulseState>,
+    pub state: Box<Account<'info, PulseState>>, // Используем Box
     
     #[account(init_if_needed, payer = signer, mint::decimals = 9, mint::authority = mint, seeds = [b"orbital-genesis"], bump)] 
     pub mint: Account<'info, Mint>,
     
     #[account(init_if_needed, payer = signer, associated_token::mint = mint, associated_token::authority = signer)] 
-    pub token_account: Account<'info, TokenAccount>,
+    pub token_account: Box<Account<'info, TokenAccount>>, // Используем Box
     
     #[account(mut)] 
     pub signer: Signer<'info>, 
@@ -153,11 +153,20 @@ pub struct Initialize<'info> {
 
 #[derive(Accounts)]
 pub struct Transition<'info> {
-    #[account(mut)] pub state: Account<'info, PulseState>,
-    #[account(mut, seeds = [b"orbital-genesis"], bump)] pub mint: Account<'info, Mint>,
-    #[account(mut)] pub token_account: Account<'info, TokenAccount>,
-    #[account(address = slot_hashes::ID)] pub slot_hashes: AccountInfo<'info>,
-    #[account(mut)] pub signer: Signer<'info>, 
+    #[account(mut)] 
+    pub state: Box<Account<'info, PulseState>>, // Используем Box
+    
+    #[account(mut, seeds = [b"orbital-genesis"], bump)] 
+    pub mint: Account<'info, Mint>,
+    
+    #[account(mut)] 
+    pub token_account: Box<Account<'info, TokenAccount>>, // Используем Box
+    
+    #[account(address = slot_hashes::ID)] 
+    pub slot_hashes: AccountInfo<'info>,
+    
+    #[account(mut)] 
+    pub signer: Signer<'info>, 
     pub token_program: Program<'info, Token>,
 }
 
