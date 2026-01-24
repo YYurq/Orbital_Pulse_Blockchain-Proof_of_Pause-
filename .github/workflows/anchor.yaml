@@ -47,7 +47,7 @@ jobs:
       - name: Install Rust
         uses: dtolnay/rust-toolchain@stable
         with:
-          toolchain: nightly
+          toolchain: stable
           components: rustfmt, clippy
 
       - name: Install Solana
@@ -77,7 +77,8 @@ jobs:
 
       - name: Build program
         run: |
-          rm -f Cargo.lock
+          find . -name "Cargo.lock" -type f -delete
+          cargo generate-lockfile
           anchor build
 
       - name: Run Cargo tests
