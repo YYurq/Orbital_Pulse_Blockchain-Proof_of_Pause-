@@ -47,7 +47,7 @@ jobs:
       - name: Install Rust
         uses: dtolnay/rust-toolchain@stable
         with:
-          toolchain: 1.75.0
+          toolchain: 1.82.0
           components: rustfmt, clippy
 
       - name: Install Solana
@@ -57,10 +57,8 @@ jobs:
           
       - name: Install Anchor CLI
         run: |
-          cargo install --git https://github.com/coral-xyz/anchor avm --locked --force
-          avm install ${{ env.ANCHOR_VERSION }}
-          avm use ${{ env.ANCHOR_VERSION }}
-          echo "$HOME/.avm/bin" >> $GITHUB_PATH
+          npm install -g @coral-xyz/anchor-cli@${{ env.ANCHOR_VERSION }}
+          echo "$(npm bin -g)" >> $GITHUB_PATH
 
       - name: Show versions
         run: |
