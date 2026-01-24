@@ -18,9 +18,13 @@ jobs:
           sudo apt-get update
           sudo apt-get install -y pkg-config build-essential libudev-dev libssl-dev
 
+      - name: Install Rust Nightly
+        run: |
+          rustup toolchain install nightly
+          rustup default nightly
+
       - name: Install Solana
         run: |
-          # Используем проверенный метод скачивания
           wget -q https://github.com/solana-labs/solana/releases/download/v1.18.12/solana-release-x86_64-unknown-linux-gnu.tar.bz2
           tar jxf solana-release-x86_64-unknown-linux-gnu.tar.bz2
           echo "$GITHUB_WORKSPACE/solana-release/bin" >> $GITHUB_PATH
@@ -28,24 +32,22 @@ jobs:
       - name: Install Anchor
         run: npm install -g @coral-xyz/anchor-cli@0.29.0
 
-      - name: Build and Patch
+      - name: Build
         run: |
           export PATH="$GITHUB_WORKSPACE/solana-release/bin:$PATH"
           
-          # 1. Создаем ключ
+          # Настройка ключа
           mkdir -p ~/.config/solana
           solana-keygen new --no-bip39-passphrase -o ~/.config/solana/id.json || echo "exists"
           
-          # 2. Генерируем Lock-файл
+          # Разрешаем нестабильные фичи для Cargo, чтобы он не падал на Edition 2024
+          export CARGO_UNSTABLE_EDITION_2024=true
+          
+          # Генерируем лок
           cargo generate-lockfile
           
-          # 3. ФИКС БОРША БЕЗ GIT (используем реестр crates.io)
-          # Мы берем те версии, которые точно есть в реестре и не требуют Rust 1.77
-          cargo update -p borsh@1.5.7 --precise 1.5.1 || echo "not found"
-          cargo update -p borsh-derive@1.5.7 --precise 1.5.1 || echo "not found"
-          
-          # 4. Хак формата Lock-файла для инструментов Solana
+          # Хак формата Lock-файла для инструментов Solana (они все еще хотят v3)
           sed -i 's/version = 4/version = 3/g' Cargo.lock
           
-          # 5. Сборка (используем --offline, чтобы Cargo не вздумал опять всё обновить)
-          anchor build -- --offline || anchor build
+          # Сборка
+          anchor build
