@@ -4,17 +4,6 @@
 [![Stars](https://img.shields.io/github/stars/YYurq/Orbital_Pulse_Blockchain-Proof_of_Pause?style=flat-square)](https://github.com/YYurq/Orbital_Pulse_Blockchain-Proof_of_Pause/stargazers)
 ```
 
-**Изменение:** Добавил `&branch=main` в конце URL бейджа Build.
-
-**Было:**
-```
-/anchor.yml?style=flat-square)
-```
-
-**Стало:**
-```
-/anchor.yml?style=flat-square&branch=main)
-
 # ORBITAL Pulse Blockchain  
 **Proof of Pause / Proof of Pulse**
 
