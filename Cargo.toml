@@ -3,5 +3,5 @@ members = ["programs/*"]
 resolver = "2"
 
 [patch.crates-io]
-# Полный SHA-1 хэш версии 0.3.1. Теперь Гитхаб его точно увидит.
-constant_time_eq = { git = "https://github.com/cesarb/constant_time_eq", rev = "ac268045657df669e46a9e32e8b23c93f0b22a01" }
+# Мы перенаправляем зависимость на локальную папку, которую создадим в workflow
+constant_time_eq = { path = "./fix/constant_time_eq" }
