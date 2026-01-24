@@ -13,39 +13,32 @@ jobs:
       - name: Checkout Code
         uses: actions/checkout@v3
 
-      - name: Install System Deps
+      - name: Setup Solana & Anchor
         run: |
-          sudo apt-get update
-          sudo apt-get install -y pkg-config build-essential libudev-dev libssl-dev
-
-      - name: Install Rust
-        uses: dtolnay/rust-toolchain@stable
-        with:
-          toolchain: 1.75.0
-
-      - name: Install Solana
-        run: |
-          wget -q https://github.com/solana-labs/solana/releases/download/v1.17.0/solana-release-x86_64-unknown-linux-gnu.tar.bz2
-          tar jxf solana-release-x86_64-unknown-linux-gnu.tar.bz2
-          echo "$GITHUB_WORKSPACE/solana-release/bin" >> $GITHUB_PATH
-
-      - name: Install Anchor
-        run: npm install -g @coral-xyz/anchor-cli@0.28.0
+          # Устанавливаем Solana 1.18.x (она современнее и решит конфликт с pubkey)
+          sh -c "$(curl -sSfL https://release.solana.com/v1.18.12/install)"
+          echo "$HOME/.local/share/solana/install/active_release/bin" >> $GITHUB_PATH
+          
+          # Устанавливаем Anchor
+          npm install -g @coral-xyz/anchor-cli@0.29.0
 
       - name: Build
         run: |
-          export PATH="$GITHUB_WORKSPACE/solana-release/bin:$PATH"
+          export PATH="$HOME/.local/share/solana/install/active_release/bin:$PATH"
           
+          # Ключ
           mkdir -p ~/.config/solana
           solana-keygen new --no-bip39-passphrase -o ~/.config/solana/id.json || echo "exists"
           
           # Генерируем лок
           cargo generate-lockfile
           
-          # Единственный важный фикс для Rust 1.75
-          cargo update -p borsh --precise 0.10.3 || echo "skip"
+          # РЕШАЕМ ТУ САМУЮ ПЕРВУЮ ПРОБЛЕМУ:
+          # Заставляем borsh-derive быть версии 1.5.1, но borsh оставить 0.10
+          # Это предотвратит требование Rust 1.77
+          cargo update -p borsh --precise 0.10.3 || echo "ok"
           
-          # Хак формата
-          sed -i 's/version = 4/version = 3/g' Cargo.lock
+          # Самое важное: если прилетает borsh 1.6, мы его давим
+          cargo update -p borsh-derive --precise 1.5.0 || echo "ok"
           
           anchor build
