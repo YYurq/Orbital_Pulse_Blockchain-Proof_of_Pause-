@@ -18,11 +18,10 @@ jobs:
           sudo apt-get update
           sudo apt-get install -y pkg-config build-essential libudev-dev libssl-dev
 
-      - name: Install Rust Stable (1.77+)
-        # Мы ставим версию 1.77 или выше, которая нативно поддерживает то, что требуют новые библиотеки
+      - name: Install Rust Nightly
         run: |
-          rustup toolchain install 1.77.0
-          rustup default 1.77.0
+          rustup toolchain install nightly
+          rustup default nightly
 
       - name: Install Solana
         run: |
@@ -33,7 +32,7 @@ jobs:
       - name: Install Anchor
         run: npm install -g @coral-xyz/anchor-cli@0.29.0
 
-      - name: Build
+      - name: Build with Unstable Features
         run: |
           export PATH="$GITHUB_WORKSPACE/solana-release/bin:$PATH"
           
@@ -41,8 +40,14 @@ jobs:
           mkdir -p ~/.config/solana
           solana-keygen new --no-bip39-passphrase -o ~/.config/solana/id.json || echo "exists"
           
-          # Чистим старые попытки
+          # ВКЛЮЧАЕМ ПОДДЕРЖКУ EDITION 2024
+          # RUSTC_BOOTSTRAP разблокирует нестабильные фичи в стабильном окружении
+          # CARGO_UNSTABLE_EDITION_2024 разрешает парсить новые конфиги
+          export RUSTC_BOOTSTRAP=1
+          export CARGO_UNSTABLE_EDITION_2024=true
+          
+          # Очистка
           rm -f Cargo.lock
           
-          # Сборка без ручных патчей. Rust 1.77 сам со всем разберется.
+          # Сборка
           anchor build
