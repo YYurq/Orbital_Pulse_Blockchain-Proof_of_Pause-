@@ -10,30 +10,38 @@ jobs:
   build:
     runs-on: ubuntu-latest
     steps:
-      - uses: actions/checkout@v4
+      - name: Checkout code
+        uses: actions/checkout@v4
 
       - name: Install Rust
         uses: dtolnay/rust-toolchain@stable
 
       - name: Build Program
         run: |
-          # 1. Установка Solana
+          # 1. Установка Solana CLI
           sh -c "$(curl -sSfL https://release.solana.com/v1.18.18/install)"
           
-          # 2. Прямая настройка путей для текущего шага
+          # 2. ПРИНУДИТЕЛЬНОЕ ОБНОВЛЕНИЕ ПУТЕЙ
+          # Добавляем бинарные файлы Solana в PATH текущей сессии
           export PATH="$HOME/.local/share/solana/install/active_release/bin:$PATH"
           
-          # 3. Установка Anchor
+          # Проверка: видит ли система теперь solana-keygen и cargo-build-sbf?
+          solana --version
+          
+          # 3. Установка Anchor CLI
           npm install -g @coral-xyz/anchor-cli@0.30.1
           
-          # 4. Тот самый фикс, который сработал!
+          # 4. ФИКС ЗАВИСИМОСТЕЙ (Уже проверенный нами метод)
+          # Это решает проблему с edition 2024 и constant_time_eq
           cargo generate-lockfile
           cargo update -p blake3 --precise 1.5.0
           
-          # 5. Сборка (теперь билд-инструменты будут видны)
+          # 5. СБОРКА
+          # Теперь команда увидит build-sbf, так как мы обновили PATH выше
           anchor build
 
       - name: Upload Artifacts
+        if: success()
         uses: actions/upload-artifact@v4
         with:
           name: program-so
