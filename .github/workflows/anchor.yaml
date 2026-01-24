@@ -82,12 +82,19 @@ jobs:
           rustup update nightly
           rm -rf ~/.cargo/registry
           rm -rf ~/.cargo/git
+          which cargo
+          which rustc
           cargo --version
+          rustc --version
           find . -name "Cargo.lock" -type f -delete
           anchor build
+        env:
+          RUSTUP_TOOLCHAIN: nightly
 
       - name: Run Cargo tests
         run: cargo test --manifest-path programs/orbital_pulse/Cargo.toml
+        env:
+          RUSTUP_TOOLCHAIN: nightly
 
       - name: Setup Node.js
         uses: actions/setup-node@v4
@@ -100,6 +107,8 @@ jobs:
 
       - name: Run Anchor tests
         run: anchor test --skip-local-validator
+        env:
+          RUSTUP_TOOLCHAIN: nightly
 
       - name: Upload artifacts
         if: always()
