@@ -9,10 +9,9 @@ on:
 jobs:
   build:
     runs-on: ubuntu-latest
-    # Используем официальный образ от создателей Anchor
-    # В нем всё уже предустановлено и настроено
+    # Используем актуальный и стабильный образ
     container:
-      image: coralxyz/anchor:v0.29.0
+      image: backpackapp/build:v0.29.0
 
     steps:
       - name: Checkout code
@@ -20,14 +19,15 @@ jobs:
 
       - name: Build Program
         run: |
-          # Внутри контейнера нам не нужно ничего устанавливать
-          # Мы просто генерируем ключ для деплоя и запускаем билд
+          # 1. Настройка ключей
           mkdir -p ~/.config/solana
           solana-keygen new --no-bip39-passphrase -o ~/.config/solana/id.json || echo "Key exists"
           
-          # Удаляем старый замок, чтобы контейнер создал свой
-          rm -f Cargo.lock
+          # 2. Главный "секрет": принудительно фиксим indexmap перед билдом
+          # Это решит ту самую проблему Rust 1.75 прямо внутри контейнера
+          cargo update -p indexmap --precise 2.2.6 || echo "Already fixed"
           
+          # 3. Билд
           anchor build
 
       - name: Upload Artifacts
