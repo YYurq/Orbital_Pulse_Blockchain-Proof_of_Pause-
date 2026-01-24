@@ -45,18 +45,19 @@ jobs:
           find . -name "Cargo.lock" -type f -delete
           cargo generate-lockfile
           
-          # 2. ГЛУБОКИЙ СИНХРОННЫЙ ОТКАТ (Downgrade)
-          # Решаем проблему с proc-macro-crate, который тянет несовместимые версии
-          cargo update -p proc-macro-crate --precise 3.1.0
+          # 2. УТОЧНЕННЫЙ ОТКАТ (Downgrade)
+          # Указываем конкретную версию @3.4.0, чтобы убрать двусмысленность (ambiguity)
+          cargo update -p proc-macro-crate@3.4.0 --precise 3.1.0
           
-          # Теперь фиксируем остальные пакеты под Rust 1.75
+          # Синхронный откат цепочки под Rust 1.75
           cargo update -p blake3 --precise 1.5.0
           cargo update -p constant_time_eq --precise 0.3.0
           cargo update -p ahash@0.8.12 --precise 0.8.6
           cargo update -p borsh@1.6.0 --precise 1.5.1 || echo "Borsh ok"
           
-          # Эти версии теперь пройдут проверку зависимостей
-          cargo update -p indexmap --precise 2.2.6
+          # Фиксируем indexmap и toml (теперь proc-macro-crate это позволит)
+          # Используем гибкий патч для indexmap
+          cargo update -p indexmap --precise 2.2.6 || cargo update -p indexmap@2.7.0 --precise 2.2.6
           cargo update -p toml_edit --precise 0.22.1
           cargo update -p toml_datetime --precise 0.6.3
           
