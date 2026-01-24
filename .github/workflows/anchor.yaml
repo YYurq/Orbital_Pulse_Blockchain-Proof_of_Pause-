@@ -79,7 +79,8 @@ jobs:
         run: |
           rustup default nightly
           rustup update nightly
-          rm -rf ~/.cargo
+          rm -rf ~/.cargo/registry
+          rm -rf ~/.cargo/git
           find . -name "Cargo.lock" -type f -delete
           anchor build
 
