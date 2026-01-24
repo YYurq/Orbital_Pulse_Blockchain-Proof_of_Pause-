@@ -38,12 +38,11 @@ jobs:
           # Генерируем лок
           cargo generate-lockfile
           
-          # ПРИНУДИТЕЛЬНО откатываем проблемный пакет через реестр
-          # Это предотвратит попытку скачать версию 0.4.2 с Rust 2024
-          cargo update -p constant_time_eq --precise 0.3.0
+          # Обновляем конкретно до той версии, которую указали в патче
+          cargo update -p constant_time_eq --precise 0.3.1
           
-          # Хак формата для Solana 1.18 (v4 -> v3)
+          # Хак формата (v4 -> v3)
           sed -i 's/version = 4/version = 3/g' Cargo.lock
           
-          # Сборка в офлайн режиме, чтобы Cargo не вздумал ничего обновлять обратно
+          # Сборка
           anchor build -- --offline
