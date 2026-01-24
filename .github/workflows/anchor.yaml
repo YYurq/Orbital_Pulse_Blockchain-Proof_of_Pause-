@@ -23,14 +23,20 @@ jobs:
           npm install -g @coral-xyz/anchor-cli@0.30.1
           
           cargo generate-lockfile
-          cargo update -p proc-macro-crate@3.4.0 --precise 3.1.0
-          cargo update -p toml_edit --precise 0.21.0
+          
+          # Устраняем двусмысленность toml_edit, указывая конкретные спецификации из логов
+          cargo update -p toml_edit@0.21.1 --precise 0.21.0
+          cargo update -p toml_edit@0.22.27 --precise 0.21.0
+          
+          # Твои стандартные откаты для стабильной сборки
+          cargo update -p proc-macro-crate --precise 3.1.0
           cargo update -p toml_datetime --precise 0.6.5
           cargo update -p indexmap --precise 2.2.6
           cargo update -p blake3 --precise 1.5.0
-          cargo update -p ahash@0.8.12 --precise 0.8.6
+          cargo update -p ahash --precise 0.8.6
           cargo update -p borsh@1.6.0 --precise 1.5.1 || echo "Borsh ok"
           
+          # Исправляем версию формата локфайла для инструментов Solana
           sed -i 's/version = 4/version = 3/g' Cargo.lock
           
           anchor build
