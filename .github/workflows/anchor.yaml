@@ -17,20 +17,20 @@ jobs:
 
       - name: Build Program
         run: |
-          # 1. Установка Solana CLI
+          # 1. Установка Solana
           sh -c "$(curl -sSfL https://release.solana.com/v1.18.18/install)"
           
-          # 2. Настройка путей (Экспорт прямо в текущую сессию)
+          # 2. Прямая настройка путей для текущего шага
           export PATH="$HOME/.local/share/solana/install/active_release/bin:$PATH"
           
           # 3. Установка Anchor
           npm install -g @coral-xyz/anchor-cli@0.30.1
           
-          # 4. Тот самый фикс зависимостей, который сработал!
+          # 4. Тот самый фикс, который сработал!
           cargo generate-lockfile
           cargo update -p blake3 --precise 1.5.0
           
-          # 5. Сборка
+          # 5. Сборка (теперь билд-инструменты будут видны)
           anchor build
 
       - name: Upload Artifacts
