@@ -1,12 +1,14 @@
 use anchor_lang::prelude::*;
 use anchor_spl::token::{self, Mint, MintTo, Token, TokenAccount};
-use anchor_spl::associated_token::AssociatedToken;
+use anchor_spl::associated_token::AssociatedToken; // Явный импорт
 use anchor_lang::solana_program::hash::hashv;
 use anchor_lang::solana_program::sysvar::slot_hashes;
 
 declare_id!("3o6We5WQoGDM6wpQMPq5VE3fjvC7zgCUD56X12vLn917");
 
 const CALIBRATION_STEPS: u8 = 16; 
+
+
 
 #[program]
 pub mod orbital_pulse {
@@ -19,7 +21,7 @@ pub mod orbital_pulse {
         state.calib_count = 0;
         state.is_born = false;
         state.gradient_threshold_percent = threshold_percent.clamp(1, 10);
-        state.mode = 255;
+        state.mode = 255; 
         state.epsilon = 0;
         state.x_control = 0;
         state.current_depth = 11;
@@ -56,7 +58,6 @@ pub mod orbital_pulse {
         let h_idx = state.head as usize;
         state.history[h_idx] = delta;
         state.head = (state.head + 1) % 16;
-
         let d_v = state.current_depth as u128;
         let mut sum: u128 = 0;
         let c_h = state.head as usize;
@@ -81,18 +82,29 @@ pub mod orbital_pulse {
 
         let x_max = state.variance_index.max(state.epsilon);
         let x_step = x_max / 10;
-        
+        let grad = state.variance_index as i64 - state.prev_variance_index as i64;
+        let thr = state.variance_index.saturating_mul(state.gradient_threshold_percent) / 100;
+        let phi_crit = state.epsilon.saturating_mul(2);
+
         match state.mode {
-            0 => if state.variance_index > state.epsilon.saturating_mul(2) { state.mode = 2; state.x_control = x_step; },
+            0 => if state.variance_index > phi_crit { state.mode = 2; state.x_control = x_step; },
             2 => {
-                state.x_control = state.x_control.saturating_add(x_step).min(x_max);
-                if state.x_control >= (x_max * 9 / 10) { state.mode = 1; }
+                if state.variance_index < state.epsilon && grad.abs() < (thr as i64) {
+                    state.mode = 0; state.x_control = 0;
+                } else {
+                    state.x_control = state.x_control.saturating_add(x_step).min(x_max);
+                    if state.x_control >= (x_max * 9 / 10) { state.mode = 1; }
+                }
             },
             1 => {
                 state.x_control = x_max;
-                if state.variance_index <= state.epsilon.saturating_mul(2) { state.mode = 0; state.x_control = 0; }
+                if state.variance_index <= phi_crit && grad <= 0 {
+                    state.mode = 0; state.x_control = 0;
+                } else if grad > (thr as i64 * 3) {
+                    state.mode = 2; state.x_control = x_max / 2;
+                }
             },
-            _ => state.mode = 0,
+            _ => state.mode = 2,
         }
 
         if state.mode == 0 && delta < state.epsilon {
@@ -121,10 +133,18 @@ impl PulseState { pub const LEN: usize = 8 + 32 + 8 + 8 + 128 + 1 + 1 + 8 + 8 + 
 
 #[derive(Accounts)]
 pub struct Initialize<'info> {
-    #[account(init, payer = signer, space = PulseState::LEN)] pub state: Account<'info, PulseState>,
-    #[account(init_if_needed, payer = signer, mint::decimals = 9, mint::authority = mint, seeds = [b"orbital-genesis"], bump)] pub mint: Account<'info, Mint>,
-    #[account(init_if_needed, payer = signer, associated_token::mint = mint, associated_token::authority = signer)] pub token_account: Account<'info, TokenAccount>,
-    #[account(mut)] pub signer: Signer<'info>, 
+    #[account(init, payer = signer, space = PulseState::LEN)] 
+    pub state: Account<'info, PulseState>,
+    
+    #[account(init_if_needed, payer = signer, mint::decimals = 9, mint::authority = mint, seeds = [b"orbital-genesis"], bump)] 
+    pub mint: Account<'info, Mint>,
+    
+    #[account(init_if_needed, payer = signer, associated_token::mint = mint, associated_token::authority = signer)] 
+    pub token_account: Account<'info, TokenAccount>,
+    
+    #[account(mut)] 
+    pub signer: Signer<'info>, 
+    
     pub system_program: Program<'info, System>,
     pub token_program: Program<'info, Token>, 
     pub associated_token_program: Program<'info, AssociatedToken>,
