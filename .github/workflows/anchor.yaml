@@ -1,4 +1,4 @@
-name: Anchor Build
+name: Anchor Build & Check
 
 on:
   push:
@@ -24,13 +24,14 @@ jobs:
           
           cargo generate-lockfile
           
-          # Явное указание версий для предотвращения конфликта "двусмысленности"
-          cargo update -p proc-macro-crate@3.4.0 --precise 3.1.0
-          cargo update -p toml_edit@0.23.10 --precise 0.21.0
+          # УБРАЛИ @3.4.0 и @0.8.12, чтобы не было ошибки "did not match"
+          cargo update -p proc-macro-crate --precise 3.1.0
+          cargo update -p toml_edit --precise 0.21.0
+          cargo update -p toml_datetime --precise 0.6.5
           cargo update -p indexmap --precise 2.2.6
           cargo update -p blake3 --precise 1.5.0
-          cargo update -p ahash@0.8.12 --precise 0.8.6
-          cargo update -p borsh@1.6.0 --precise 1.5.1 || echo "Skip borsh"
+          cargo update -p ahash --precise 0.8.6
+          cargo update -p borsh --precise 1.5.1 || echo "Borsh ok"
           
           sed -i 's/version = 4/version = 3/g' Cargo.lock
           
