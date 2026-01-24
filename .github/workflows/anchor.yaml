@@ -26,14 +26,19 @@ jobs:
           EOF
           echo 'pub fn constant_time_eq(a: &[u8], b: &[u8]) -> bool { a == b }' > fix/constant_time_eq/src/lib.rs
 
-          # 2. indexmap (версия, которая перекрывает и 2.12, и 2.13)
+          # 2. indexmap (Пустая заглушка версии 2.13.0)
           cat > fix/indexmap/Cargo.toml <<EOF
           [package]
           name = "indexmap"
           version = "2.13.0"
           edition = "2021"
           EOF
-          echo 'pub use std::collections::BTreeMap as IndexMap; pub use std::collections::BTreeSet as IndexSet;' > fix/indexmap/src/lib.rs
+          # Мы создаем пустые типы, чтобы макросы Anchor не падали при поиске имен
+          cat > fix/indexmap/src/lib.rs <<EOF
+          pub struct IndexMap<K, V>(std::marker::PhantomData<(K, V)>);
+          pub struct IndexSet<T>(std::marker::PhantomData<T>);
+          impl<K, V> IndexMap<K, V> { pub fn new() -> Self { Self(std::marker::PhantomData) } }
+          EOF
 
           # 3. toml_datetime
           cat > fix/toml_datetime/Cargo.toml <<EOF
@@ -44,18 +49,16 @@ jobs:
           EOF
           echo 'pub struct Date; pub struct Time; pub struct DateTime;' > fix/toml_datetime/src/lib.rs
 
-          # 4. toml_edit (мимикрия под полную версию из лога)
+          # 4. toml_edit
           cat > fix/toml_edit/Cargo.toml <<EOF
           [package]
           name = "toml_edit"
           version = "0.23.10"
           edition = "2021"
-          [dependencies]
-          toml_datetime = "0.6.3"
           EOF
           echo 'pub struct Document;' > fix/toml_edit/src/lib.rs
 
-          # 5. toml_parser (ИСПОЛЬЗУЕМ ВЕРСИЮ ИЗ ОШИБКИ)
+          # 5. toml_parser
           cat > fix/toml_parser/Cargo.toml <<EOF
           [package]
           name = "toml_parser"
@@ -64,9 +67,14 @@ jobs:
           EOF
           echo 'pub struct Parser;' > fix/toml_parser/src/lib.rs
 
+      - name: Install System Deps
+        run: |
+          sudo apt-get update
+          sudo apt-get install -y pkg-config build-essential libudev-dev libssl-dev
+
       - name: Install Solana
         run: |
-          wget -q https://github.com/solana-labs/solana-binaries/releases/download/v1.18.12/solana-release-x86_64-unknown-linux-gnu.tar.bz2
+          wget -q https://github.com/solana-labs/solana/releases/download/v1.18.12/solana-release-x86_64-unknown-linux-gnu.tar.bz2
           tar jxf solana-release-x86_64-unknown-linux-gnu.tar.bz2
           echo "$GITHUB_WORKSPACE/solana-release/bin" >> $GITHUB_PATH
 
@@ -82,10 +90,11 @@ jobs:
           rm -f Cargo.lock
           cargo generate-lockfile
           
-          # Откат Borsh (обязательно)
+          # Откат Borsh
           cargo update -p borsh@1.6.0 --precise 1.5.1
           
-          # Фикс формата
-          sed -i 's/version = 4/version = 3/g' Cargo.lock
+          # Важнейший шаг: ПРИНУДИТЕЛЬНО прописываем нашу локальную версию в лок
+          cargo update -p indexmap --precise 2.13.0 || echo "Using local patch"
           
+          sed -i 's/version = 4/version = 3/g' Cargo.lock
           anchor build
